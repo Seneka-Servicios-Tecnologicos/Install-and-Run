@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProyectoIdRouteImport } from './routes/proyecto.$id'
+import { Route as ProyectoIdEntradaEntradaIdRouteImport } from './routes/proyecto.$id.entrada.$entradaId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -22,31 +24,58 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProyectoIdRoute = ProyectoIdRouteImport.update({
+  id: '/proyecto/$id',
+  path: '/proyecto/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProyectoIdEntradaEntradaIdRoute =
+  ProyectoIdEntradaEntradaIdRouteImport.update({
+    id: '/entrada/$entradaId',
+    path: '/entrada/$entradaId',
+    getParentRoute: () => ProyectoIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/proyecto/$id'
+    | '/proyecto/$id/entrada/$entradaId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth'
-  id: '__root__' | '/' | '/auth'
+  to: '/' | '/auth' | '/proyecto/$id' | '/proyecto/$id/entrada/$entradaId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/proyecto/$id'
+    | '/proyecto/$id/entrada/$entradaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ProyectoIdRoute: typeof ProyectoIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,13 +94,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/proyecto/$id': {
+      id: '/proyecto/$id'
+      path: '/proyecto/$id'
+      fullPath: '/proyecto/$id'
+      preLoaderRoute: typeof ProyectoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proyecto/$id/entrada/$entradaId': {
+      id: '/proyecto/$id/entrada/$entradaId'
+      path: '/entrada/$entradaId'
+      fullPath: '/proyecto/$id/entrada/$entradaId'
+      preLoaderRoute: typeof ProyectoIdEntradaEntradaIdRouteImport
+      parentRoute: typeof ProyectoIdRoute
+    }
   }
 }
+
+interface ProyectoIdRouteChildren {
+  ProyectoIdEntradaEntradaIdRoute: typeof ProyectoIdEntradaEntradaIdRoute
+}
+
+const ProyectoIdRouteChildren: ProyectoIdRouteChildren = {
+  ProyectoIdEntradaEntradaIdRoute: ProyectoIdEntradaEntradaIdRoute,
+}
+
+const ProyectoIdRouteWithChildren = ProyectoIdRoute._addFileChildren(
+  ProyectoIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ProyectoIdRoute: ProyectoIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
