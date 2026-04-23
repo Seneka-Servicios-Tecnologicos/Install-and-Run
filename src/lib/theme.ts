@@ -1,0 +1,16 @@
+const STORAGE_KEY = "rr-theme";
+
+export type Theme = "light" | "dark";
+
+export function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+export function applyTheme(theme: Theme) {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  window.localStorage.setItem(STORAGE_KEY, theme);
+}
