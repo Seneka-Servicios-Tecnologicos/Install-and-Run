@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface Entry {
   thumbnail_path: string | null;
   media_path: string | null;
   captured_at: string;
+  user_id: string;
 }
 interface Project {
   id: string;
@@ -38,16 +39,23 @@ interface Project {
   location: string | null;
   description: string | null;
   status: string;
+  visibility: string;
+  user_id: string;
+  client_id: string | null;
   created_at: string;
 }
+interface ClientLite { id: string; name: string }
+interface ProfileLite { id: string; full_name: string | null; email: string | null }
 
 function ProjectView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [client, setClient] = useState<ClientLite | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [authors, setAuthors] = useState<Record<string, ProfileLite>>({});
   const [view, setView] = useState<"timeline" | "lista">("timeline");
 
   // capture state
@@ -73,9 +81,16 @@ function ProjectView() {
     }
     setProject(p as Project);
 
+    if (p.client_id) {
+      const { data: c } = await supabase.from("clients").select("id, name").eq("id", p.client_id).maybeSingle();
+      if (c) setClient(c as ClientLite);
+    } else {
+      setClient(null);
+    }
+
     const { data: e } = await supabase
       .from("entries")
-      .select("id, type, title, description, thumbnail_path, media_path, captured_at")
+      .select("id, type, title, description, thumbnail_path, media_path, captured_at, user_id")
       .eq("project_id", id)
       .order("captured_at", { ascending: false });
 
@@ -92,6 +107,18 @@ function ProjectView() {
       }),
     );
     setThumbs(map);
+
+    // load authors for public projects (or just current)
+    const userIds = Array.from(new Set(list.map((x) => x.user_id)));
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+      const am: Record<string, ProfileLite> = {};
+      for (const pr of profs ?? []) am[pr.id] = pr as ProfileLite;
+      setAuthors(am);
+    }
   };
 
   useEffect(() => {
