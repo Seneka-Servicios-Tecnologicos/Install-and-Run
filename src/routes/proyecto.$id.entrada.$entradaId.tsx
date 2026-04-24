@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Trash2, Save, Camera, Video, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Save, Camera, Video, FileText, User } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { getSignedUrl, deleteMedia } from "@/lib/storage";
 
 export const Route = createFileRoute("/proyecto/$id/entrada/$entradaId")({
   head: () => ({
-    meta: [{ title: "Entrada — Report & Run" }],
+    meta: [{ title: "Entrada — Install & Report" }],
   }),
   component: EntryDetail,
 });
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/proyecto/$id/entrada/$entradaId")({
 interface Entry {
   id: string;
   project_id: string;
+  user_id: string;
   type: "photo" | "video" | "note";
   title: string | null;
   description: string | null;
@@ -34,11 +35,18 @@ interface Entry {
   created_at: string;
 }
 
+interface AuthorProfile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
 function EntryDetail() {
   const { id, entradaId } = Route.useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [entry, setEntry] = useState<Entry | null>(null);
+  const [author, setAuthor] = useState<AuthorProfile | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -69,8 +77,17 @@ function EntryDetail() {
         const url = await getSignedUrl(en.media_path, 7200);
         setMediaUrl(url);
       }
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("id", en.user_id)
+        .maybeSingle();
+      if (prof) setAuthor(prof as AuthorProfile);
     })();
   }, [user, entradaId, id, navigate]);
+
+  const isOwner = !!entry && !!user && entry.user_id === user.id;
 
   const handleSave = async () => {
     if (!entry) return;
@@ -140,6 +157,15 @@ function EntryDetail() {
             <video src={mediaUrl} controls className="w-full h-auto" />
           </div>
         )}
+        {entry.type === "note" && (
+          <Card className="p-6 mb-6 bg-accent/30">
+            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words">
+              {entry.description || (
+                <span className="text-muted-foreground italic">Sin contenido</span>
+              )}
+            </div>
+          </Card>
+        )}
 
         <Card className="p-5 mb-4 space-y-4">
           <div className="space-y-2">
@@ -148,30 +174,56 @@ function EntryDetail() {
               id="ed-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              disabled={!isOwner}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ed-desc">Descripción / notas</Label>
+            <Label htmlFor="ed-desc">
+              {entry.type === "note" ? "Contenido" : "Descripción / notas"}
+            </Label>
             <Textarea
               id="ed-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={5}
+              rows={entry.type === "note" ? 8 : 5}
+              disabled={!isOwner}
             />
           </div>
-          <div className="flex justify-between gap-2 pt-2">
-            <Button variant="destructive" onClick={handleDelete} className="gap-1.5">
-              <Trash2 className="h-4 w-4" /> Eliminar
-            </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-              <Save className="h-4 w-4" /> {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
+          {isOwner ? (
+            <div className="flex justify-between gap-2 pt-2">
+              <Button variant="destructive" onClick={handleDelete} className="gap-1.5">
+                <Trash2 className="h-4 w-4" /> Eliminar
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+                <Save className="h-4 w-4" /> {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic pt-2">
+              Solo el autor puede editar o eliminar esta entrada.
+            </p>
+          )}
         </Card>
 
         <Card className="p-5">
           <h3 className="text-sm font-medium mb-3">Metadatos</h3>
           <dl className="text-sm space-y-2">
+            {author && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" /> Autor
+                </dt>
+                <dd>
+                  <Link
+                    to="/usuario/$id"
+                    params={{ id: author.id }}
+                    className="hover:underline"
+                  >
+                    {author.full_name || author.email || "Sin nombre"}
+                  </Link>
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Capturado</dt>
               <dd>{formatDateTime(entry.captured_at)}</dd>

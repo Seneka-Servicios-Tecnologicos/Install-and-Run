@@ -9,11 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
+import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsuarioIdRouteImport } from './routes/usuario.$id'
 import { Route as ProyectoIdRouteImport } from './routes/proyecto.$id'
+import { Route as ClienteIdRouteImport } from './routes/cliente.$id'
 import { Route as ProyectoIdEntradaEntradaIdRouteImport } from './routes/proyecto.$id.entrada.$entradaId'
 
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -24,9 +38,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsuarioIdRoute = UsuarioIdRouteImport.update({
+  id: '/usuario/$id',
+  path: '/usuario/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProyectoIdRoute = ProyectoIdRouteImport.update({
   id: '/proyecto/$id',
   path: '/proyecto/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClienteIdRoute = ClienteIdRouteImport.update({
+  id: '/cliente/$id',
+  path: '/cliente/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProyectoIdEntradaEntradaIdRoute =
@@ -39,20 +63,32 @@ const ProyectoIdEntradaEntradaIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/clientes': typeof ClientesRoute
+  '/usuarios': typeof UsuariosRoute
+  '/cliente/$id': typeof ClienteIdRoute
   '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/usuario/$id': typeof UsuarioIdRoute
   '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/clientes': typeof ClientesRoute
+  '/usuarios': typeof UsuariosRoute
+  '/cliente/$id': typeof ClienteIdRoute
   '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/usuario/$id': typeof UsuarioIdRoute
   '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/clientes': typeof ClientesRoute
+  '/usuarios': typeof UsuariosRoute
+  '/cliente/$id': typeof ClienteIdRoute
   '/proyecto/$id': typeof ProyectoIdRouteWithChildren
+  '/usuario/$id': typeof UsuarioIdRoute
   '/proyecto/$id/entrada/$entradaId': typeof ProyectoIdEntradaEntradaIdRoute
 }
 export interface FileRouteTypes {
@@ -60,26 +96,60 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/clientes'
+    | '/usuarios'
+    | '/cliente/$id'
     | '/proyecto/$id'
+    | '/usuario/$id'
     | '/proyecto/$id/entrada/$entradaId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/proyecto/$id' | '/proyecto/$id/entrada/$entradaId'
+  to:
+    | '/'
+    | '/auth'
+    | '/clientes'
+    | '/usuarios'
+    | '/cliente/$id'
+    | '/proyecto/$id'
+    | '/usuario/$id'
+    | '/proyecto/$id/entrada/$entradaId'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/clientes'
+    | '/usuarios'
+    | '/cliente/$id'
     | '/proyecto/$id'
+    | '/usuario/$id'
     | '/proyecto/$id/entrada/$entradaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ClientesRoute: typeof ClientesRoute
+  UsuariosRoute: typeof UsuariosRoute
+  ClienteIdRoute: typeof ClienteIdRoute
   ProyectoIdRoute: typeof ProyectoIdRouteWithChildren
+  UsuarioIdRoute: typeof UsuarioIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -94,11 +164,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/usuario/$id': {
+      id: '/usuario/$id'
+      path: '/usuario/$id'
+      fullPath: '/usuario/$id'
+      preLoaderRoute: typeof UsuarioIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/proyecto/$id': {
       id: '/proyecto/$id'
       path: '/proyecto/$id'
       fullPath: '/proyecto/$id'
       preLoaderRoute: typeof ProyectoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cliente/$id': {
+      id: '/cliente/$id'
+      path: '/cliente/$id'
+      fullPath: '/cliente/$id'
+      preLoaderRoute: typeof ClienteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/proyecto/$id/entrada/$entradaId': {
@@ -126,7 +210,11 @@ const ProyectoIdRouteWithChildren = ProyectoIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ClientesRoute: ClientesRoute,
+  UsuariosRoute: UsuariosRoute,
+  ClienteIdRoute: ClienteIdRoute,
   ProyectoIdRoute: ProyectoIdRouteWithChildren,
+  UsuarioIdRoute: UsuarioIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
