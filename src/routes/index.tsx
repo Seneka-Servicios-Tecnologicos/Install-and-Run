@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, FolderOpen, Image as ImageIcon } from "lucide-react";
+import { Plus, Search, FolderOpen, Image as ImageIcon, Lock, Globe, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +34,7 @@ import { getSignedUrl } from "@/lib/storage";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mis proyectos — Report & Run" },
+      { title: "Mis proyectos — Install & Report" },
       { name: "description", content: "Tus proyectos de trabajo en campo." },
     ],
   }),
@@ -39,21 +47,34 @@ interface ProjectRow {
   location: string | null;
   description: string | null;
   status: string;
+  visibility: string;
+  user_id: string;
+  client_id: string | null;
   created_at: string;
   entry_count: number;
   last_thumb: string | null;
+  client_name?: string | null;
+}
+
+interface ClientOpt {
+  id: string;
+  name: string;
 }
 
 function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [clients, setClients] = useState<ClientOpt[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"todos" | "activo" | "finalizado">("todos");
+  const [scope, setScope] = useState<"todos" | "mios" | "publicos">("todos");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [clientId, setClientId] = useState<string>("none");
+  const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
 
@@ -65,13 +86,21 @@ function Dashboard() {
     if (!user) return;
     const { data: pData, error } = await supabase
       .from("projects")
-      .select("id, name, location, description, status, created_at")
+      .select("id, name, location, description, status, visibility, user_id, client_id, created_at")
       .order("created_at", { ascending: false });
     if (error) {
       toast.error("Error cargando proyectos");
       return;
     }
-    // Counts + last thumb per project
+
+    // map of clientId → name
+    const clientIds = Array.from(new Set((pData ?? []).map((p) => p.client_id).filter(Boolean) as string[]));
+    let clientMap = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const { data: cs } = await supabase.from("clients").select("id, name").in("id", clientIds);
+      clientMap = new Map((cs ?? []).map((c) => [c.id, c.name]));
+    }
+
     const enriched: ProjectRow[] = await Promise.all(
       (pData ?? []).map(async (p) => {
         const { count } = await supabase
@@ -90,12 +119,12 @@ function Dashboard() {
           ...p,
           entry_count: count ?? 0,
           last_thumb: lastEntry?.thumbnail_path ?? null,
+          client_name: p.client_id ? clientMap.get(p.client_id) ?? null : null,
         };
       }),
     );
     setProjects(enriched);
 
-    // load signed urls for thumbnails
     const urls: Record<string, string> = {};
     await Promise.all(
       enriched.map(async (p) => {
@@ -108,18 +137,28 @@ function Dashboard() {
     setThumbs(urls);
   };
 
+  const loadClients = async () => {
+    const { data } = await supabase.from("clients").select("id, name").order("name");
+    setClients((data ?? []) as ClientOpt[]);
+  };
+
   useEffect(() => {
-    if (user) loadProjects();
+    if (user) {
+      loadProjects();
+      loadClients();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
       if (filter !== "todos" && p.status !== filter) return false;
+      if (scope === "mios" && p.user_id !== user?.id) return false;
+      if (scope === "publicos" && p.visibility !== "public") return false;
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [projects, search, filter]);
+  }, [projects, search, filter, scope, user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +166,14 @@ function Dashboard() {
     setCreating(true);
     const { error, data } = await supabase
       .from("projects")
-      .insert({ user_id: user.id, name, location: location || null, description: description || null })
+      .insert({
+        user_id: user.id,
+        name,
+        location: location || null,
+        description: description || null,
+        client_id: clientId === "none" ? null : clientId,
+        visibility: isPublic ? "public" : "private",
+      })
       .select("id")
       .single();
     setCreating(false);
@@ -137,7 +183,7 @@ function Dashboard() {
     }
     toast.success("Proyecto creado");
     setOpen(false);
-    setName(""); setLocation(""); setDescription("");
+    setName(""); setLocation(""); setDescription(""); setClientId("none"); setIsPublic(false);
     if (data) navigate({ to: "/proyecto/$id", params: { id: data.id } });
   };
 
@@ -155,9 +201,9 @@ function Dashboard() {
       <main className="mx-auto max-w-5xl px-4 py-6 pb-24">
         <div className="flex items-end justify-between mb-6 gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Mis proyectos</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {projects.length} {projects.length === 1 ? "proyecto" : "proyectos"}
+              {projects.length} {projects.length === 1 ? "proyecto" : "proyectos"} visibles
             </p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -182,7 +228,24 @@ function Dashboard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="p-loc">Cliente / ubicación</Label>
+                  <Label htmlFor="p-client">Cliente</Label>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger id="p-client">
+                      <SelectValue placeholder="Selecciona un cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin cliente</SelectItem>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    ¿No está? <Link to="/clientes" className="text-primary hover:underline">Crear cliente</Link>
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="p-loc">Ubicación</Label>
                   <Input
                     id="p-loc"
                     value={location}
@@ -200,6 +263,20 @@ function Dashboard() {
                     placeholder="Detalles, alcance, notas iniciales..."
                   />
                 </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="p-vis" className="flex items-center gap-2 cursor-pointer">
+                      {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      {isPublic ? "Proyecto público" : "Proyecto privado"}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isPublic
+                        ? "Todo el equipo puede ver y colaborar añadiendo entradas."
+                        : "Solo tú puedes ver y editar este proyecto."}
+                    </p>
+                  </div>
+                  <Switch id="p-vis" checked={isPublic} onCheckedChange={setIsPublic} />
+                </div>
                 <DialogFooter>
                   <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                     Cancelar
@@ -213,7 +290,7 @@ function Dashboard() {
           </Dialog>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -231,13 +308,22 @@ function Dashboard() {
             </TabsList>
           </Tabs>
         </div>
+        <div className="mb-6">
+          <Tabs value={scope} onValueChange={(v) => setScope(v as typeof scope)}>
+            <TabsList>
+              <TabsTrigger value="todos">Todos</TabsTrigger>
+              <TabsTrigger value="mios">Míos</TabsTrigger>
+              <TabsTrigger value="publicos">Públicos del equipo</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         {filtered.length === 0 ? (
           <Card className="p-12 text-center">
             <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">
               {projects.length === 0
-                ? "Aún no tienes proyectos. Crea el primero para empezar."
+                ? "Aún no hay proyectos. Crea el primero para empezar."
                 : "Sin resultados para el filtro actual."}
             </p>
           </Card>
@@ -263,17 +349,30 @@ function Dashboard() {
                         <ImageIcon className="h-8 w-8" />
                       </div>
                     )}
-                    <Badge
-                      variant={p.status === "activo" ? "default" : "secondary"}
-                      className="absolute top-2 right-2"
-                    >
-                      {p.status === "activo" ? "Activo" : "Finalizado"}
-                    </Badge>
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                      <Badge
+                        variant={p.status === "activo" ? "default" : "secondary"}
+                      >
+                        {p.status === "activo" ? "Activo" : "Finalizado"}
+                      </Badge>
+                      <Badge variant="outline" className="bg-background/90 gap-1">
+                        {p.visibility === "public" ? (
+                          <><Globe className="h-3 w-3" /> Público</>
+                        ) : (
+                          <><Lock className="h-3 w-3" /> Privado</>
+                        )}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                       {p.name}
                     </h3>
+                    {p.client_name && (
+                      <p className="text-xs text-primary/80 truncate mt-0.5 flex items-center gap-1">
+                        <Building2 className="h-3 w-3" /> {p.client_name}
+                      </p>
+                    )}
                     {p.location && (
                       <p className="text-sm text-muted-foreground truncate mt-0.5">
                         {p.location}

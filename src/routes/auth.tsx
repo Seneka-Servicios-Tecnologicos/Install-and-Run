@@ -8,11 +8,13 @@ import { Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
+import logoColor from "@/assets/logo-seneka-color.png";
+import logoWhite from "@/assets/logo-seneka-white.png";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Acceder — Report & Run" },
+      { title: "Acceder — Install & Report" },
       { name: "description", content: "Inicia sesión o crea una cuenta de técnico." },
     ],
   }),
@@ -21,7 +23,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { theme, toggle } = useTheme();
+  const { theme, toggle, mounted } = useTheme();
+  const logo = mounted && theme === "dark" ? logoWhite : logoColor;
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,14 +75,12 @@ function AuthPage() {
         onClick={toggle}
         aria-label="Cambiar tema"
       >
-        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>
 
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
-          R&amp;R
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Report &amp; Run</h1>
+        <img src={logo} alt="Seneka" className="mx-auto mb-4 h-14 w-auto" />
+        <h1 className="text-2xl font-semibold tracking-tight">Install &amp; Report</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Reportes de campo con evidencia visual
         </p>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface Entry {
   thumbnail_path: string | null;
   media_path: string | null;
   captured_at: string;
+  user_id: string;
 }
 interface Project {
   id: string;
@@ -38,16 +39,23 @@ interface Project {
   location: string | null;
   description: string | null;
   status: string;
+  visibility: string;
+  user_id: string;
+  client_id: string | null;
   created_at: string;
 }
+interface ClientLite { id: string; name: string }
+interface ProfileLite { id: string; full_name: string | null; email: string | null }
 
 function ProjectView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [client, setClient] = useState<ClientLite | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [authors, setAuthors] = useState<Record<string, ProfileLite>>({});
   const [view, setView] = useState<"timeline" | "lista">("timeline");
 
   // capture state
@@ -73,9 +81,16 @@ function ProjectView() {
     }
     setProject(p as Project);
 
+    if (p.client_id) {
+      const { data: c } = await supabase.from("clients").select("id, name").eq("id", p.client_id).maybeSingle();
+      if (c) setClient(c as ClientLite);
+    } else {
+      setClient(null);
+    }
+
     const { data: e } = await supabase
       .from("entries")
-      .select("id, type, title, description, thumbnail_path, media_path, captured_at")
+      .select("id, type, title, description, thumbnail_path, media_path, captured_at, user_id")
       .eq("project_id", id)
       .order("captured_at", { ascending: false });
 
@@ -92,6 +107,18 @@ function ProjectView() {
       }),
     );
     setThumbs(map);
+
+    // load authors for public projects (or just current)
+    const userIds = Array.from(new Set(list.map((x) => x.user_id)));
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+      const am: Record<string, ProfileLite> = {};
+      for (const pr of profs ?? []) am[pr.id] = pr as ProfileLite;
+      setAuthors(am);
+    }
   };
 
   useEffect(() => {
@@ -112,6 +139,8 @@ function ProjectView() {
     return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [entries]);
 
+  const isOwner = !!project && project.user_id === user?.id;
+
   const toggleStatus = async () => {
     if (!project) return;
     const next = project.status === "activo" ? "finalizado" : "activo";
@@ -125,6 +154,21 @@ function ProjectView() {
     }
     setProject({ ...project, status: next });
     toast.success(next === "finalizado" ? "Proyecto finalizado" : "Proyecto reabierto");
+  };
+
+  const toggleVisibility = async () => {
+    if (!project) return;
+    const next = project.visibility === "public" ? "private" : "public";
+    const { error } = await supabase
+      .from("projects")
+      .update({ visibility: next })
+      .eq("id", project.id);
+    if (error) {
+      toast.error("Error al cambiar visibilidad");
+      return;
+    }
+    setProject({ ...project, visibility: next });
+    toast.success(next === "public" ? "Ahora es público para todo el equipo" : "Ahora es privado");
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +202,23 @@ function ProjectView() {
               <Badge variant={project.status === "activo" ? "default" : "secondary"}>
                 {project.status === "activo" ? "Activo" : "Finalizado"}
               </Badge>
+              <Badge variant="outline" className="gap-1">
+                {project.visibility === "public" ? (
+                  <><Globe className="h-3 w-3" /> Público</>
+                ) : (
+                  <><Lock className="h-3 w-3" /> Privado</>
+                )}
+              </Badge>
             </div>
+            {client && (
+              <Link
+                to="/cliente/$id"
+                params={{ id: client.id }}
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+              >
+                <Building2 className="h-3.5 w-3.5" /> {client.name}
+              </Link>
+            )}
             {project.location && (
               <p className="text-sm text-muted-foreground mt-1">{project.location}</p>
             )}
@@ -166,7 +226,7 @@ function ProjectView() {
               <p className="text-sm text-muted-foreground mt-2 max-w-2xl">{project.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
                 <TabsTrigger value="timeline" className="gap-1.5">
@@ -177,13 +237,24 @@ function ProjectView() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
-              {project.status === "activo" ? (
-                <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
-              ) : (
-                <><RotateCcw className="h-4 w-4" /> Reabrir</>
-              )}
-            </Button>
+            {isOwner && (
+              <>
+                <Button variant="outline" size="sm" onClick={toggleVisibility} className="gap-1.5">
+                  {project.visibility === "public" ? (
+                    <><Lock className="h-4 w-4" /> Hacer privado</>
+                  ) : (
+                    <><Globe className="h-4 w-4" /> Hacer público</>
+                  )}
+                </Button>
+                <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
+                  {project.status === "activo" ? (
+                    <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
+                  ) : (
+                    <><RotateCcw className="h-4 w-4" /> Reabrir</>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -205,7 +276,14 @@ function ProjectView() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {g.items.map((e) => (
-                    <EntryCard key={e.id} entry={e} thumb={thumbs[e.id]} projectId={project.id} />
+                    <EntryCard
+                      key={e.id}
+                      entry={e}
+                      thumb={thumbs[e.id]}
+                      projectId={project.id}
+                      author={authors[e.user_id]}
+                      isPublic={project.visibility === "public"}
+                    />
                   ))}
                 </div>
               </section>
@@ -219,6 +297,9 @@ function ProjectView() {
                   <th className="text-left px-4 py-2 font-medium">Hora</th>
                   <th className="text-left px-4 py-2 font-medium">Tipo</th>
                   <th className="text-left px-4 py-2 font-medium">Título</th>
+                  {project.visibility === "public" && (
+                    <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
+                  )}
                   <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
                   <th className="text-right px-4 py-2 font-medium">Vista</th>
                 </tr>
@@ -235,6 +316,11 @@ function ProjectView() {
                     </td>
                     <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
                     <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+                    {project.visibility === "public" && (
+                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
+                        {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
                       {e.description || "—"}
                     </td>
@@ -298,10 +384,14 @@ function EntryCard({
   entry,
   thumb,
   projectId,
+  author,
+  isPublic,
 }: {
   entry: Entry;
   thumb?: string;
   projectId: string;
+  author?: ProfileLite;
+  isPublic?: boolean;
 }) {
   return (
     <Link
@@ -333,6 +423,11 @@ function EntryCard({
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {formatTime(entry.captured_at)} · {formatRelative(entry.captured_at)}
           </p>
+          {isPublic && author && (
+            <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">
+              por {author.full_name || author.email}
+            </p>
+          )}
         </div>
       </Card>
     </Link>
