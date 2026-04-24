@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          contact: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entries: {
         Row: {
           captured_at: string
@@ -96,6 +126,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -104,8 +135,10 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -114,8 +147,10 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -124,8 +159,17 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
