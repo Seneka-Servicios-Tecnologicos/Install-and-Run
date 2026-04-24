@@ -139,6 +139,8 @@ function ProjectView() {
     return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [entries]);
 
+  const isOwner = !!project && project.user_id === user?.id;
+
   const toggleStatus = async () => {
     if (!project) return;
     const next = project.status === "activo" ? "finalizado" : "activo";
@@ -152,6 +154,21 @@ function ProjectView() {
     }
     setProject({ ...project, status: next });
     toast.success(next === "finalizado" ? "Proyecto finalizado" : "Proyecto reabierto");
+  };
+
+  const toggleVisibility = async () => {
+    if (!project) return;
+    const next = project.visibility === "public" ? "private" : "public";
+    const { error } = await supabase
+      .from("projects")
+      .update({ visibility: next })
+      .eq("id", project.id);
+    if (error) {
+      toast.error("Error al cambiar visibilidad");
+      return;
+    }
+    setProject({ ...project, visibility: next });
+    toast.success(next === "public" ? "Ahora es público para todo el equipo" : "Ahora es privado");
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,7 +202,23 @@ function ProjectView() {
               <Badge variant={project.status === "activo" ? "default" : "secondary"}>
                 {project.status === "activo" ? "Activo" : "Finalizado"}
               </Badge>
+              <Badge variant="outline" className="gap-1">
+                {project.visibility === "public" ? (
+                  <><Globe className="h-3 w-3" /> Público</>
+                ) : (
+                  <><Lock className="h-3 w-3" /> Privado</>
+                )}
+              </Badge>
             </div>
+            {client && (
+              <Link
+                to="/cliente/$id"
+                params={{ id: client.id }}
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+              >
+                <Building2 className="h-3.5 w-3.5" /> {client.name}
+              </Link>
+            )}
             {project.location && (
               <p className="text-sm text-muted-foreground mt-1">{project.location}</p>
             )}
@@ -193,7 +226,7 @@ function ProjectView() {
               <p className="text-sm text-muted-foreground mt-2 max-w-2xl">{project.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
                 <TabsTrigger value="timeline" className="gap-1.5">
@@ -204,13 +237,24 @@ function ProjectView() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
-              {project.status === "activo" ? (
-                <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
-              ) : (
-                <><RotateCcw className="h-4 w-4" /> Reabrir</>
-              )}
-            </Button>
+            {isOwner && (
+              <>
+                <Button variant="outline" size="sm" onClick={toggleVisibility} className="gap-1.5">
+                  {project.visibility === "public" ? (
+                    <><Lock className="h-4 w-4" /> Hacer privado</>
+                  ) : (
+                    <><Globe className="h-4 w-4" /> Hacer público</>
+                  )}
+                </Button>
+                <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
+                  {project.status === "activo" ? (
+                    <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
+                  ) : (
+                    <><RotateCcw className="h-4 w-4" /> Reabrir</>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
