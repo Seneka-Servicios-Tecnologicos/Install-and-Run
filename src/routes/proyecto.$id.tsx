@@ -276,7 +276,14 @@ function ProjectView() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {g.items.map((e) => (
-                    <EntryCard key={e.id} entry={e} thumb={thumbs[e.id]} projectId={project.id} />
+                    <EntryCard
+                      key={e.id}
+                      entry={e}
+                      thumb={thumbs[e.id]}
+                      projectId={project.id}
+                      author={authors[e.user_id]}
+                      isPublic={project.visibility === "public"}
+                    />
                   ))}
                 </div>
               </section>
@@ -290,6 +297,9 @@ function ProjectView() {
                   <th className="text-left px-4 py-2 font-medium">Hora</th>
                   <th className="text-left px-4 py-2 font-medium">Tipo</th>
                   <th className="text-left px-4 py-2 font-medium">Título</th>
+                  {project.visibility === "public" && (
+                    <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
+                  )}
                   <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
                   <th className="text-right px-4 py-2 font-medium">Vista</th>
                 </tr>
@@ -306,6 +316,11 @@ function ProjectView() {
                     </td>
                     <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
                     <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+                    {project.visibility === "public" && (
+                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
+                        {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
                       {e.description || "—"}
                     </td>
@@ -369,10 +384,14 @@ function EntryCard({
   entry,
   thumb,
   projectId,
+  author,
+  isPublic,
 }: {
   entry: Entry;
   thumb?: string;
   projectId: string;
+  author?: ProfileLite;
+  isPublic?: boolean;
 }) {
   return (
     <Link
@@ -404,6 +423,11 @@ function EntryCard({
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {formatTime(entry.captured_at)} · {formatRelative(entry.captured_at)}
           </p>
+          {isPublic && author && (
+            <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">
+              por {author.full_name || author.email}
+            </p>
+          )}
         </div>
       </Card>
     </Link>
