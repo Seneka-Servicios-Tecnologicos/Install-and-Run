@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2, Trash2, GitCommitVertical } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,7 @@ function ProjectView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
   const [client, setClient] = useState<ClientLite | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -170,6 +171,11 @@ function ProjectView() {
   }, [entries]);
 
   const isOwner = !!project && project.user_id === user?.id;
+  const isEntryDetailRoute = location.pathname.includes("/entrada/");
+
+  if (isEntryDetailRoute) {
+    return <Outlet />;
+  }
 
   const toggleStatus = async () => {
     if (!project) return;
