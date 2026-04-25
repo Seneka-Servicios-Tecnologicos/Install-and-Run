@@ -36,6 +36,7 @@ interface Client {
   name: string;
   contact: string | null;
   notes: string | null;
+  created_by: string;
 }
 interface ProjectWithEntries {
   id: string;
