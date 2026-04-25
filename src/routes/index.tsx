@@ -143,10 +143,19 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (user) {
-      loadProjects();
-      loadClients();
-    }
+    if (!user) return;
+    loadProjects();
+    loadClients();
+    // Realtime: refresca lista cuando alguien crea/modifica proyectos o sube entradas
+    const channel = supabase
+      .channel("dashboard-projects")
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => loadProjects())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "entries" }, () => loadProjects())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "entries" }, () => loadProjects())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
