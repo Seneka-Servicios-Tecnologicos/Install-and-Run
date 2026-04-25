@@ -44,7 +44,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
   const [compressed, setCompressed] = useState<CompressedFile | null>(null);
   const [saving, setSaving] = useState(false);
   const [autoTime, setAutoTime] = useState(true);
-  const [manualTime, setManualTime] = useState<string>(nowLocalInputValue());
+  const [manualTime, setManualTime] = useState<Date>(() => new Date());
 
   useEffect(() => {
     if (!open) return;
