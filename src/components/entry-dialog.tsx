@@ -53,7 +53,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
     setCompressed(null);
     setPreviewUrl(null);
     setAutoTime(true);
-    setManualTime(nowLocalInputValue());
+    setManualTime(new Date());
     if (!draft?.blob) return;
 
     const url = URL.createObjectURL(draft.blob);
