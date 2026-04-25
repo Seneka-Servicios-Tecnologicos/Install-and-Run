@@ -134,7 +134,25 @@ function ProjectView() {
   };
 
   useEffect(() => {
-    if (user) load();
+    if (!user) return;
+    load();
+    // Realtime: cualquier cambio en entries/projects de este proyecto recarga
+    const channel = supabase
+      .channel(`project-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries", filter: `project_id=eq.${id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "projects", filter: `id=eq.${id}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id]);
 
@@ -189,6 +207,37 @@ function ProjectView() {
     if (!file) return;
     const isVideo = file.type.startsWith("video/");
     setDraft({ type: isVideo ? "video" : "photo", blob: file, mime: file.type });
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    setDeleting(true);
+    try {
+      // 1. Recolectar todas las rutas de media para liberar storage
+      const { data: allEntries } = await supabase
+        .from("entries")
+        .select("media_path, thumbnail_path")
+        .eq("project_id", project.id);
+      const paths: string[] = [];
+      for (const en of allEntries ?? []) {
+        if (en.media_path) paths.push(en.media_path);
+        if (en.thumbnail_path) paths.push(en.thumbnail_path);
+      }
+      // 2. Borrar archivos del bucket
+      if (paths.length > 0) await deleteMedia(paths);
+      // 3. Borrar entradas (en cascada lógica)
+      await supabase.from("entries").delete().eq("project_id", project.id);
+      // 4. Borrar el proyecto
+      const { error } = await supabase.from("projects").delete().eq("id", project.id);
+      if (error) throw error;
+      toast.success("Proyecto eliminado");
+      navigate({ to: "/" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al eliminar el proyecto");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading || !user || !project) {
