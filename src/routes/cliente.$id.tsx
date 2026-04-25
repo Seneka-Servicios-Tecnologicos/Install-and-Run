@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2, FolderOpen, LayoutGrid, List, Camera, Video, FileText, Lock, Globe } from "lucide-react";
+import { ArrowLeft, Building2, FolderOpen, LayoutGrid, List, Camera, Video, FileText, Lock, Globe, Trash2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -24,6 +36,7 @@ interface Client {
   name: string;
   contact: string | null;
   notes: string | null;
+  created_by: string;
 }
 interface ProjectWithEntries {
   id: string;
@@ -63,7 +76,7 @@ function ClientView() {
     (async () => {
       const { data: c } = await supabase
         .from("clients")
-        .select("id, name, contact, notes")
+        .select("id, name, contact, notes, created_by")
         .eq("id", id)
         .maybeSingle();
       if (!c) {
@@ -122,6 +135,27 @@ function ClientView() {
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [projects]);
 
+  const handleDeleteClient = async () => {
+    if (!client) return;
+    if (projects.length > 0) {
+      const { error: upErr } = await supabase
+        .from("projects")
+        .update({ client_id: null })
+        .eq("client_id", client.id);
+      if (upErr) {
+        toast.error("No se pudieron desvincular los proyectos");
+        return;
+      }
+    }
+    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    if (error) {
+      toast.error("Error al eliminar cliente");
+      return;
+    }
+    toast.success("Cliente eliminado");
+    navigate({ to: "/clientes" });
+  };
+
   if (loading || !user || !client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -129,6 +163,8 @@ function ClientView() {
       </div>
     );
   }
+
+  const isCreator = client.created_by === user.id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,16 +189,47 @@ function ClientView() {
               )}
             </div>
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-            <TabsList>
-              <TabsTrigger value="timeline" className="gap-1.5">
-                <LayoutGrid className="h-4 w-4" /> Timeline
-              </TabsTrigger>
-              <TabsTrigger value="lista" className="gap-1.5">
-                <List className="h-4 w-4" /> Lista
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+              <TabsList>
+                <TabsTrigger value="timeline" className="gap-1.5">
+                  <LayoutGrid className="h-4 w-4" /> Timeline
+                </TabsTrigger>
+                <TabsTrigger value="lista" className="gap-1.5">
+                  <List className="h-4 w-4" /> Lista
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {isCreator && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se eliminará <span className="font-medium">{client.name}</span>.
+                      {projects.length > 0
+                        ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                        : " Esta acción no se puede deshacer."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteClient}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
 
         {projects.length === 0 ? (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, Building2 } from "lucide-react";
+import { Plus, Search, Building2, Trash2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -36,6 +47,7 @@ interface ClientRow {
   contact: string | null;
   notes: string | null;
   created_at: string;
+  created_by: string;
   project_count: number;
 }
 
@@ -58,7 +70,7 @@ function ClientsPage() {
     if (!user) return;
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, contact, notes, created_at")
+      .select("id, name, contact, notes, created_at, created_by")
       .order("name", { ascending: true });
     if (error) {
       toast.error("Error cargando clientes");
@@ -107,6 +119,26 @@ function ClientsPage() {
     toast.success("Cliente creado");
     setName(""); setContact(""); setNotes("");
     setOpen(false);
+    load();
+  };
+
+  const handleDelete = async (clientId: string, projectCount: number) => {
+    if (projectCount > 0) {
+      const { error: upErr } = await supabase
+        .from("projects")
+        .update({ client_id: null })
+        .eq("client_id", clientId);
+      if (upErr) {
+        toast.error("No se pudieron desvincular los proyectos");
+        return;
+      }
+    }
+    const { error } = await supabase.from("clients").delete().eq("id", clientId);
+    if (error) {
+      toast.error("Error al eliminar cliente");
+      return;
+    }
+    toast.success("Cliente eliminado");
     load();
   };
 
@@ -203,15 +235,20 @@ function ClientsPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((c) => (
-              <Link
-                key={c.id}
-                to="/cliente/$id"
-                params={{ id: c.id }}
-                className="group"
-              >
-                <Card className="p-5 transition-all hover:shadow-md hover:-translate-y-0.5 h-full">
-                  <div className="flex items-start gap-3">
+            {filtered.map((c) => {
+              const isCreator = c.created_by === user.id;
+              return (
+                <Card
+                  key={c.id}
+                  className="p-5 transition-all hover:shadow-md hover:-translate-y-0.5 h-full relative group"
+                >
+                  <Link
+                    to="/cliente/$id"
+                    params={{ id: c.id }}
+                    className="absolute inset-0 z-0 rounded-lg"
+                    aria-label={`Abrir ${c.name}`}
+                  />
+                  <div className="flex items-start gap-3 relative z-10 pointer-events-none">
                     <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <Building2 className="h-5 w-5" />
                     </div>
@@ -230,9 +267,44 @@ function ClientsPage() {
                       </div>
                     </div>
                   </div>
+                  {isCreator && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 z-20 h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Eliminar cliente"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Se eliminará <span className="font-medium">{c.name}</span>.
+                            {c.project_count > 0
+                              ? ` Sus ${c.project_count} ${c.project_count === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                              : " Esta acción no se puede deshacer."}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(c.id, c.project_count)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </Card>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
