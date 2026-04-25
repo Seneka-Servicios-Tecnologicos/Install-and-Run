@@ -115,7 +115,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
         compressedSize = compressed.compressedSize;
       }
 
-      const captured = autoTime ? new Date().toISOString() : new Date(manualTime).toISOString();
+      const captured = autoTime ? new Date().toISOString() : manualTime.toISOString();
 
       const { error } = await supabase.from("entries").insert({
         project_id: projectId,
