@@ -34,11 +34,7 @@ interface EntryDialogProps {
   onSaved: () => void;
 }
 
-function nowLocalInputValue() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
-}
+// no helper needed; we keep a Date in state
 
 export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }: EntryDialogProps) {
   const [title, setTitle] = useState("");
