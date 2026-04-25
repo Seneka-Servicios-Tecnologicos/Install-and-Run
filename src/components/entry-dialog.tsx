@@ -16,6 +16,7 @@ import { compressImage, processVideo, type CompressedFile } from "@/lib/compress
 import { uploadMedia } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBytes } from "@/lib/format";
+import { DateTimePicker } from "@/components/datetime-picker";
 import { toast } from "sonner";
 
 interface EntryDraft {
