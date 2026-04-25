@@ -189,16 +189,47 @@ function ClientView() {
               )}
             </div>
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-            <TabsList>
-              <TabsTrigger value="timeline" className="gap-1.5">
-                <LayoutGrid className="h-4 w-4" /> Timeline
-              </TabsTrigger>
-              <TabsTrigger value="lista" className="gap-1.5">
-                <List className="h-4 w-4" /> Lista
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+              <TabsList>
+                <TabsTrigger value="timeline" className="gap-1.5">
+                  <LayoutGrid className="h-4 w-4" /> Timeline
+                </TabsTrigger>
+                <TabsTrigger value="lista" className="gap-1.5">
+                  <List className="h-4 w-4" /> Lista
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {isCreator && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se eliminará <span className="font-medium">{client.name}</span>.
+                      {projects.length > 0
+                        ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                        : " Esta acción no se puede deshacer."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteClient}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
 
         {projects.length === 0 ? (
