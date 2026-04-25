@@ -122,6 +122,26 @@ function ClientsPage() {
     load();
   };
 
+  const handleDelete = async (clientId: string, projectCount: number) => {
+    if (projectCount > 0) {
+      const { error: upErr } = await supabase
+        .from("projects")
+        .update({ client_id: null })
+        .eq("client_id", clientId);
+      if (upErr) {
+        toast.error("No se pudieron desvincular los proyectos");
+        return;
+      }
+    }
+    const { error } = await supabase.from("clients").delete().eq("id", clientId);
+    if (error) {
+      toast.error("Error al eliminar cliente");
+      return;
+    }
+    toast.success("Cliente eliminado");
+    load();
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
