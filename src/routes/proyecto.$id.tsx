@@ -291,10 +291,13 @@ function ProjectView() {
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
                 <TabsTrigger value="timeline" className="gap-1.5">
-                  <LayoutGrid className="h-4 w-4" /> Timeline
+                  <LayoutGrid className="h-4 w-4" /> <span className="hidden sm:inline">Timeline</span>
+                </TabsTrigger>
+                <TabsTrigger value="cronologia" className="gap-1.5">
+                  <GitCommitVertical className="h-4 w-4" /> <span className="hidden sm:inline">Cronología</span>
                 </TabsTrigger>
                 <TabsTrigger value="lista" className="gap-1.5">
-                  <List className="h-4 w-4" /> Lista
+                  <List className="h-4 w-4" /> <span className="hidden sm:inline">Lista</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -302,18 +305,43 @@ function ProjectView() {
               <>
                 <Button variant="outline" size="sm" onClick={toggleVisibility} className="gap-1.5">
                   {project.visibility === "public" ? (
-                    <><Lock className="h-4 w-4" /> Hacer privado</>
+                    <><Lock className="h-4 w-4" /> <span className="hidden sm:inline">Hacer privado</span></>
                   ) : (
-                    <><Globe className="h-4 w-4" /> Hacer público</>
+                    <><Globe className="h-4 w-4" /> <span className="hidden sm:inline">Hacer público</span></>
                   )}
                 </Button>
                 <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
                   {project.status === "activo" ? (
-                    <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
+                    <><CheckCircle2 className="h-4 w-4" /> <span className="hidden sm:inline">Finalizar</span></>
                   ) : (
-                    <><RotateCcw className="h-4 w-4" /> Reabrir</>
+                    <><RotateCcw className="h-4 w-4" /> <span className="hidden sm:inline">Reabrir</span></>
                   )}
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
+                      <Trash2 className="h-4 w-4" /> <span className="hidden sm:inline">Eliminar</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar este proyecto?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción es permanente. Se eliminarán <strong>{entries.length}</strong> entrada{entries.length === 1 ? "" : "s"}, todas las fotos y videos asociados, y se liberará el espacio en el almacenamiento. No se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteProject}
+                        disabled={deleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleting ? "Eliminando..." : "Sí, eliminar todo"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
             )}
           </div>
