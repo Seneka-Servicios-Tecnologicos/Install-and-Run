@@ -47,6 +47,7 @@ interface ClientRow {
   contact: string | null;
   notes: string | null;
   created_at: string;
+  created_by: string;
   project_count: number;
 }
 
