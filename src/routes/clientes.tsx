@@ -235,15 +235,20 @@ function ClientsPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((c) => (
-              <Link
-                key={c.id}
-                to="/cliente/$id"
-                params={{ id: c.id }}
-                className="group"
-              >
-                <Card className="p-5 transition-all hover:shadow-md hover:-translate-y-0.5 h-full">
-                  <div className="flex items-start gap-3">
+            {filtered.map((c) => {
+              const isCreator = c.created_by === user.id;
+              return (
+                <Card
+                  key={c.id}
+                  className="p-5 transition-all hover:shadow-md hover:-translate-y-0.5 h-full relative group"
+                >
+                  <Link
+                    to="/cliente/$id"
+                    params={{ id: c.id }}
+                    className="absolute inset-0 z-0 rounded-lg"
+                    aria-label={`Abrir ${c.name}`}
+                  />
+                  <div className="flex items-start gap-3 relative z-10 pointer-events-none">
                     <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <Building2 className="h-5 w-5" />
                     </div>
@@ -262,9 +267,44 @@ function ClientsPage() {
                       </div>
                     </div>
                   </div>
+                  {isCreator && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 z-20 h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Eliminar cliente"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Se eliminará <span className="font-medium">{c.name}</span>.
+                            {c.project_count > 0
+                              ? ` Sus ${c.project_count} ${c.project_count === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                              : " Esta acción no se puede deshacer."}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(c.id, c.project_count)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </Card>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
