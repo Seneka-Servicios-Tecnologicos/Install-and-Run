@@ -222,13 +222,8 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
             </div>
             {!autoTime && (
               <div className="space-y-2">
-                <Label htmlFor="e-time">Fecha y hora</Label>
-                <Input
-                  id="e-time"
-                  type="datetime-local"
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
-                />
+                <Label>Fecha y hora</Label>
+                <DateTimePicker value={manualTime} onChange={setManualTime} />
               </div>
             )}
           </div>
