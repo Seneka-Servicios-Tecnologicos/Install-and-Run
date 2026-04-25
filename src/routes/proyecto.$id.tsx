@@ -67,12 +67,13 @@ function ProjectView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [authors, setAuthors] = useState<Record<string, ProfileLite>>({});
-  const [view, setView] = useState<"timeline" | "lista">("timeline");
+  const [view, setView] = useState<"timeline" | "cronologia" | "lista">("timeline");
 
   // capture state
   const [cameraMode, setCameraMode] = useState<"photo" | "video" | null>(null);
   const [draft, setDraft] = useState<{ type: "photo" | "video" | "note"; blob?: Blob; mime?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
