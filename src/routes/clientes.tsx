@@ -70,7 +70,7 @@ function ClientsPage() {
     if (!user) return;
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, contact, notes, created_at")
+      .select("id, name, contact, notes, created_at, created_by")
       .order("name", { ascending: true });
     if (error) {
       toast.error("Error cargando clientes");
