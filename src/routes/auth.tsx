@@ -8,8 +8,7 @@ import { Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTheme } from "@/hooks/use-theme";
-import logoColor from "@/assets/logo-seneka-color.png";
-import logoWhite from "@/assets/logo-seneka-white.png";
+import { SenekaLogo } from "@/components/seneka-logo";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -24,7 +23,6 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { theme, toggle, mounted } = useTheme();
-  const logo = mounted && theme === "dark" ? logoWhite : logoColor;
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,7 +77,9 @@ function AuthPage() {
       </Button>
 
       <div className="mb-8 text-center">
-        <img src={logo} alt="Seneka" className="mx-auto mb-4 h-14 w-auto" />
+        <div className="flex justify-center mb-4">
+          <SenekaLogo className="h-14 w-auto" />
+        </div>
         <h1 className="text-2xl font-semibold tracking-tight">Install &amp; Report</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Reportes de campo con evidencia visual

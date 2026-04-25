@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2 } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2, Trash2, GitCommitVertical } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { FabMenu } from "@/components/fab-menu";
 import { CameraCapture } from "@/components/camera-capture";
 import { EntryDialog } from "@/components/entry-dialog";
@@ -13,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
-import { getSignedUrl } from "@/lib/storage";
+import { getSignedUrl, deleteMedia } from "@/lib/storage";
 import { format, startOfDay } from "date-fns";
 
 export const Route = createFileRoute("/proyecto/$id")({
@@ -56,12 +67,13 @@ function ProjectView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [authors, setAuthors] = useState<Record<string, ProfileLite>>({});
-  const [view, setView] = useState<"timeline" | "lista">("timeline");
+  const [view, setView] = useState<"timeline" | "cronologia" | "lista">("timeline");
 
   // capture state
   const [cameraMode, setCameraMode] = useState<"photo" | "video" | null>(null);
   const [draft, setDraft] = useState<{ type: "photo" | "video" | "note"; blob?: Blob; mime?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -122,7 +134,25 @@ function ProjectView() {
   };
 
   useEffect(() => {
-    if (user) load();
+    if (!user) return;
+    load();
+    // Realtime: cualquier cambio en entries/projects de este proyecto recarga
+    const channel = supabase
+      .channel(`project-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries", filter: `project_id=eq.${id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "projects", filter: `id=eq.${id}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id]);
 
@@ -179,6 +209,37 @@ function ProjectView() {
     setDraft({ type: isVideo ? "video" : "photo", blob: file, mime: file.type });
   };
 
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    setDeleting(true);
+    try {
+      // 1. Recolectar todas las rutas de media para liberar storage
+      const { data: allEntries } = await supabase
+        .from("entries")
+        .select("media_path, thumbnail_path")
+        .eq("project_id", project.id);
+      const paths: string[] = [];
+      for (const en of allEntries ?? []) {
+        if (en.media_path) paths.push(en.media_path);
+        if (en.thumbnail_path) paths.push(en.thumbnail_path);
+      }
+      // 2. Borrar archivos del bucket
+      if (paths.length > 0) await deleteMedia(paths);
+      // 3. Borrar entradas (en cascada lógica)
+      await supabase.from("entries").delete().eq("project_id", project.id);
+      // 4. Borrar el proyecto
+      const { error } = await supabase.from("projects").delete().eq("id", project.id);
+      if (error) throw error;
+      toast.success("Proyecto eliminado");
+      navigate({ to: "/" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al eliminar el proyecto");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading || !user || !project) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -230,10 +291,13 @@ function ProjectView() {
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
                 <TabsTrigger value="timeline" className="gap-1.5">
-                  <LayoutGrid className="h-4 w-4" /> Timeline
+                  <LayoutGrid className="h-4 w-4" /> <span className="hidden sm:inline">Timeline</span>
+                </TabsTrigger>
+                <TabsTrigger value="cronologia" className="gap-1.5">
+                  <GitCommitVertical className="h-4 w-4" /> <span className="hidden sm:inline">Cronología</span>
                 </TabsTrigger>
                 <TabsTrigger value="lista" className="gap-1.5">
-                  <List className="h-4 w-4" /> Lista
+                  <List className="h-4 w-4" /> <span className="hidden sm:inline">Lista</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -241,18 +305,43 @@ function ProjectView() {
               <>
                 <Button variant="outline" size="sm" onClick={toggleVisibility} className="gap-1.5">
                   {project.visibility === "public" ? (
-                    <><Lock className="h-4 w-4" /> Hacer privado</>
+                    <><Lock className="h-4 w-4" /> <span className="hidden sm:inline">Hacer privado</span></>
                   ) : (
-                    <><Globe className="h-4 w-4" /> Hacer público</>
+                    <><Globe className="h-4 w-4" /> <span className="hidden sm:inline">Hacer público</span></>
                   )}
                 </Button>
                 <Button variant="outline" size="sm" onClick={toggleStatus} className="gap-1.5">
                   {project.status === "activo" ? (
-                    <><CheckCircle2 className="h-4 w-4" /> Finalizar</>
+                    <><CheckCircle2 className="h-4 w-4" /> <span className="hidden sm:inline">Finalizar</span></>
                   ) : (
-                    <><RotateCcw className="h-4 w-4" /> Reabrir</>
+                    <><RotateCcw className="h-4 w-4" /> <span className="hidden sm:inline">Reabrir</span></>
                   )}
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
+                      <Trash2 className="h-4 w-4" /> <span className="hidden sm:inline">Eliminar</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar este proyecto?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción es permanente. Se eliminarán <strong>{entries.length}</strong> entrada{entries.length === 1 ? "" : "s"}, todas las fotos y videos asociados, y se liberará el espacio en el almacenamiento. No se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteProject}
+                        disabled={deleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleting ? "Eliminando..." : "Sí, eliminar todo"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
             )}
           </div>
@@ -289,50 +378,60 @@ function ProjectView() {
               </section>
             ))}
           </div>
+        ) : view === "cronologia" ? (
+          <TimelineCronologia
+            entries={entries}
+            thumbs={thumbs}
+            authors={authors}
+            projectId={project.id}
+            isPublic={project.visibility === "public"}
+          />
         ) : (
           <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Hora</th>
-                  <th className="text-left px-4 py-2 font-medium">Tipo</th>
-                  <th className="text-left px-4 py-2 font-medium">Título</th>
-                  {project.visibility === "public" && (
-                    <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
-                  )}
-                  <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
-                  <th className="text-right px-4 py-2 font-medium">Vista</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr
-                    key={e.id}
-                    className="border-t hover:bg-muted/30 cursor-pointer"
-                    onClick={() => navigate({ to: "/proyecto/$id/entrada/$entradaId", params: { id: project.id, entradaId: e.id } })}
-                  >
-                    <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
-                      {format(new Date(e.captured_at), "dd/MM HH:mm")}
-                    </td>
-                    <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
-                    <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium">Hora</th>
+                    <th className="text-left px-4 py-2 font-medium">Tipo</th>
+                    <th className="text-left px-4 py-2 font-medium">Título</th>
                     {project.visibility === "public" && (
-                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
-                        {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
-                      </td>
+                      <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
                     )}
-                    <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
-                      {e.description || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {thumbs[e.id] && (
-                        <img src={thumbs[e.id]} alt="" className="inline-block h-8 w-8 rounded object-cover" />
-                      )}
-                    </td>
+                    <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
+                    <th className="text-right px-4 py-2 font-medium">Vista</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {entries.map((e) => (
+                    <tr
+                      key={e.id}
+                      className="border-t hover:bg-muted/30 cursor-pointer"
+                      onClick={() => navigate({ to: "/proyecto/$id/entrada/$entradaId", params: { id: project.id, entradaId: e.id } })}
+                    >
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
+                        {format(new Date(e.captured_at), "dd/MM HH:mm")}
+                      </td>
+                      <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
+                      <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+                      {project.visibility === "public" && (
+                        <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
+                          {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
+                        </td>
+                      )}
+                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
+                        {e.description || "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {thumbs[e.id] && (
+                          <img src={thumbs[e.id]} alt="" className="inline-block h-8 w-8 rounded object-cover" />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         )}
       </main>
@@ -431,5 +530,77 @@ function EntryCard({
         </div>
       </Card>
     </Link>
+  );
+}
+
+function TimelineCronologia({
+  entries,
+  thumbs,
+  authors,
+  projectId,
+  isPublic,
+}: {
+  entries: Entry[];
+  thumbs: Record<string, string>;
+  authors: Record<string, ProfileLite>;
+  projectId: string;
+  isPublic: boolean;
+}) {
+  return (
+    <div className="relative pl-6 sm:pl-10 before:absolute before:left-[10px] sm:before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-border">
+      <ol className="space-y-5">
+        {entries.map((e) => (
+          <li key={e.id} className="relative">
+            {/* punto en la línea */}
+            <span className="absolute -left-[18px] sm:-left-[26px] top-3 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+            <Link
+              to="/proyecto/$id/entrada/$entradaId"
+              params={{ id: projectId, entradaId: e.id }}
+              className="block group"
+            >
+              <Card className="p-3 flex items-center gap-3 transition-all hover:shadow-md hover:border-primary/40">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-md overflow-hidden bg-muted relative">
+                  {thumbs[e.id] ? (
+                    <img src={thumbs[e.id]} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : e.type === "note" ? (
+                    <div className="w-full h-full p-1.5 text-[9px] text-muted-foreground line-clamp-4 bg-accent/40">
+                      {e.description || e.title || "Nota"}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <TypeIcon type={e.type} />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 right-0 bg-background/80 backdrop-blur rounded-tl-md p-0.5">
+                    <TypeIcon type={e.type} />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                      {format(new Date(e.captured_at), "dd MMM · HH:mm")}
+                    </p>
+                    <span className="text-xs text-muted-foreground/60">
+                      {formatRelative(e.captured_at)}
+                    </span>
+                  </div>
+                  <p className="font-medium text-sm truncate group-hover:text-primary mt-0.5">
+                    {e.title || (e.type === "note" ? "Nota" : e.type === "photo" ? "Foto" : "Video")}
+                  </p>
+                  {e.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{e.description}</p>
+                  )}
+                  {isPublic && authors[e.user_id] && (
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">
+                      por {authors[e.user_id].full_name || authors[e.user_id].email}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
