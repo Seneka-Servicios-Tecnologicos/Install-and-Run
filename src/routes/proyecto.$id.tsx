@@ -378,50 +378,60 @@ function ProjectView() {
               </section>
             ))}
           </div>
+        ) : view === "cronologia" ? (
+          <TimelineCronologia
+            entries={entries}
+            thumbs={thumbs}
+            authors={authors}
+            projectId={project.id}
+            isPublic={project.visibility === "public"}
+          />
         ) : (
           <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Hora</th>
-                  <th className="text-left px-4 py-2 font-medium">Tipo</th>
-                  <th className="text-left px-4 py-2 font-medium">Título</th>
-                  {project.visibility === "public" && (
-                    <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
-                  )}
-                  <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
-                  <th className="text-right px-4 py-2 font-medium">Vista</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr
-                    key={e.id}
-                    className="border-t hover:bg-muted/30 cursor-pointer"
-                    onClick={() => navigate({ to: "/proyecto/$id/entrada/$entradaId", params: { id: project.id, entradaId: e.id } })}
-                  >
-                    <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
-                      {format(new Date(e.captured_at), "dd/MM HH:mm")}
-                    </td>
-                    <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
-                    <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium">Hora</th>
+                    <th className="text-left px-4 py-2 font-medium">Tipo</th>
+                    <th className="text-left px-4 py-2 font-medium">Título</th>
                     {project.visibility === "public" && (
-                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
-                        {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
-                      </td>
+                      <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Autor</th>
                     )}
-                    <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
-                      {e.description || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {thumbs[e.id] && (
-                        <img src={thumbs[e.id]} alt="" className="inline-block h-8 w-8 rounded object-cover" />
-                      )}
-                    </td>
+                    <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Notas</th>
+                    <th className="text-right px-4 py-2 font-medium">Vista</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {entries.map((e) => (
+                    <tr
+                      key={e.id}
+                      className="border-t hover:bg-muted/30 cursor-pointer"
+                      onClick={() => navigate({ to: "/proyecto/$id/entrada/$entradaId", params: { id: project.id, entradaId: e.id } })}
+                    >
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
+                        {format(new Date(e.captured_at), "dd/MM HH:mm")}
+                      </td>
+                      <td className="px-4 py-2"><TypeIcon type={e.type} /></td>
+                      <td className="px-4 py-2 font-medium truncate max-w-[200px]">{e.title || "—"}</td>
+                      {project.visibility === "public" && (
+                        <td className="px-4 py-2 text-muted-foreground truncate max-w-[150px] hidden md:table-cell">
+                          {authors[e.user_id]?.full_name || authors[e.user_id]?.email || "—"}
+                        </td>
+                      )}
+                      <td className="px-4 py-2 text-muted-foreground truncate max-w-[300px] hidden sm:table-cell">
+                        {e.description || "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {thumbs[e.id] && (
+                          <img src={thumbs[e.id]} alt="" className="inline-block h-8 w-8 rounded object-cover" />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         )}
       </main>
