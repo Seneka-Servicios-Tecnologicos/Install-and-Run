@@ -16,6 +16,7 @@ import { compressImage, processVideo, type CompressedFile } from "@/lib/compress
 import { uploadMedia } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBytes } from "@/lib/format";
+import { DateTimePicker } from "@/components/datetime-picker";
 import { toast } from "sonner";
 
 interface EntryDraft {
@@ -33,11 +34,7 @@ interface EntryDialogProps {
   onSaved: () => void;
 }
 
-function nowLocalInputValue() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
-}
+// no helper needed; we keep a Date in state
 
 export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }: EntryDialogProps) {
   const [title, setTitle] = useState("");
@@ -47,7 +44,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
   const [compressed, setCompressed] = useState<CompressedFile | null>(null);
   const [saving, setSaving] = useState(false);
   const [autoTime, setAutoTime] = useState(true);
-  const [manualTime, setManualTime] = useState<string>(nowLocalInputValue());
+  const [manualTime, setManualTime] = useState<Date>(() => new Date());
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +53,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
     setCompressed(null);
     setPreviewUrl(null);
     setAutoTime(true);
-    setManualTime(nowLocalInputValue());
+    setManualTime(new Date());
     if (!draft?.blob) return;
 
     const url = URL.createObjectURL(draft.blob);
@@ -118,7 +115,7 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
         compressedSize = compressed.compressedSize;
       }
 
-      const captured = autoTime ? new Date().toISOString() : new Date(manualTime).toISOString();
+      const captured = autoTime ? new Date().toISOString() : manualTime.toISOString();
 
       const { error } = await supabase.from("entries").insert({
         project_id: projectId,
@@ -225,13 +222,8 @@ export function EntryDialog({ open, draft, projectId, userId, onClose, onSaved }
             </div>
             {!autoTime && (
               <div className="space-y-2">
-                <Label htmlFor="e-time">Fecha y hora</Label>
-                <Input
-                  id="e-time"
-                  type="datetime-local"
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
-                />
+                <Label>Fecha y hora</Label>
+                <DateTimePicker value={manualTime} onChange={setManualTime} />
               </div>
             )}
           </div>
