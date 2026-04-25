@@ -103,4 +103,29 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  /* Cursor pointer en todos los elementos interactivos (Tailwind v4 ya no lo añade por defecto) */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  [role="tab"]:not(:disabled),
+  [role="menuitem"]:not(:disabled),
+  [role="option"]:not(:disabled),
+  [role="switch"]:not(:disabled),
+  a[href],
+  summary,
+  label[for],
+  select:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
+
+/* Logo dual: muestra el de color en claro, el blanco en oscuro. Cambio instantáneo, sin flash. */
+.logo-light { display: inline-block; }
+.logo-dark { display: none; }
+.dark .logo-light { display: none; }
+.dark .logo-dark { display: inline-block; }
