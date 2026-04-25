@@ -135,6 +135,27 @@ function ClientView() {
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [projects]);
 
+  const handleDeleteClient = async () => {
+    if (!client) return;
+    if (projects.length > 0) {
+      const { error: upErr } = await supabase
+        .from("projects")
+        .update({ client_id: null })
+        .eq("client_id", client.id);
+      if (upErr) {
+        toast.error("No se pudieron desvincular los proyectos");
+        return;
+      }
+    }
+    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    if (error) {
+      toast.error("Error al eliminar cliente");
+      return;
+    }
+    toast.success("Cliente eliminado");
+    navigate({ to: "/clientes" });
+  };
+
   if (loading || !user || !client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -142,6 +163,8 @@ function ClientView() {
       </div>
     );
   }
+
+  const isCreator = client.created_by === user.id;
 
   return (
     <div className="min-h-screen bg-background">
