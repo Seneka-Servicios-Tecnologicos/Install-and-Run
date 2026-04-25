@@ -532,3 +532,75 @@ function EntryCard({
     </Link>
   );
 }
+
+function TimelineCronologia({
+  entries,
+  thumbs,
+  authors,
+  projectId,
+  isPublic,
+}: {
+  entries: Entry[];
+  thumbs: Record<string, string>;
+  authors: Record<string, ProfileLite>;
+  projectId: string;
+  isPublic: boolean;
+}) {
+  return (
+    <div className="relative pl-6 sm:pl-10 before:absolute before:left-[10px] sm:before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-border">
+      <ol className="space-y-5">
+        {entries.map((e) => (
+          <li key={e.id} className="relative">
+            {/* punto en la línea */}
+            <span className="absolute -left-[18px] sm:-left-[26px] top-3 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
+            <Link
+              to="/proyecto/$id/entrada/$entradaId"
+              params={{ id: projectId, entradaId: e.id }}
+              className="block group"
+            >
+              <Card className="p-3 flex items-center gap-3 transition-all hover:shadow-md hover:border-primary/40">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-md overflow-hidden bg-muted relative">
+                  {thumbs[e.id] ? (
+                    <img src={thumbs[e.id]} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : e.type === "note" ? (
+                    <div className="w-full h-full p-1.5 text-[9px] text-muted-foreground line-clamp-4 bg-accent/40">
+                      {e.description || e.title || "Nota"}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <TypeIcon type={e.type} />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 right-0 bg-background/80 backdrop-blur rounded-tl-md p-0.5">
+                    <TypeIcon type={e.type} />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                      {format(new Date(e.captured_at), "dd MMM · HH:mm")}
+                    </p>
+                    <span className="text-xs text-muted-foreground/60">
+                      {formatRelative(e.captured_at)}
+                    </span>
+                  </div>
+                  <p className="font-medium text-sm truncate group-hover:text-primary mt-0.5">
+                    {e.title || (e.type === "note" ? "Nota" : e.type === "photo" ? "Foto" : "Video")}
+                  </p>
+                  {e.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{e.description}</p>
+                  )}
+                  {isPublic && authors[e.user_id] && (
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">
+                      por {authors[e.user_id].full_name || authors[e.user_id].email}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
