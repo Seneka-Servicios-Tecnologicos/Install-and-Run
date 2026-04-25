@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2 } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2, Trash2, GitCommitVertical } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { FabMenu } from "@/components/fab-menu";
 import { CameraCapture } from "@/components/camera-capture";
 import { EntryDialog } from "@/components/entry-dialog";
@@ -13,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
-import { getSignedUrl } from "@/lib/storage";
+import { getSignedUrl, deleteMedia } from "@/lib/storage";
 import { format, startOfDay } from "date-fns";
 
 export const Route = createFileRoute("/proyecto/$id")({
