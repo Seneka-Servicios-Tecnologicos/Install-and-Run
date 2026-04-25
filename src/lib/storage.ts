@@ -16,13 +16,20 @@ export async function uploadMedia(
   return path;
 }
 
+function normalizeSignedUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) return url;
+  return `${supabaseUrl.replace(/\/$/, "")}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
 export async function getSignedUrl(path: string, expiresIn = 3600): Promise<string | null> {
   if (!path) return null;
   const { data, error } = await supabase.storage
     .from("project-media")
     .createSignedUrl(path, expiresIn);
-  if (error) return null;
-  return data.signedUrl;
+  if (error || !data?.signedUrl) return null;
+  return normalizeSignedUrl(data.signedUrl);
 }
 
 export async function deleteMedia(paths: string[]): Promise<void> {
