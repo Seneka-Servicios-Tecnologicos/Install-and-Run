@@ -217,88 +217,90 @@ function Dashboard() {
               {projects.length} {projects.length === 1 ? "proyecto" : "proyectos"} visibles
             </p>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" className="gap-2">
-                <Plus className="h-4 w-4" /> Nuevo proyecto
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo proyecto</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="p-name">Nombre *</Label>
-                  <Input
-                    id="p-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    placeholder="Cableado oficina central"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="p-client">Cliente</Label>
-                  <Select value={clientId} onValueChange={setClientId}>
-                    <SelectTrigger id="p-client">
-                      <SelectValue placeholder="Selecciona un cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin cliente</SelectItem>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    ¿No está? <Link to="/clientes" className="text-primary hover:underline">Crear cliente</Link>
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="p-loc">Ubicación</Label>
-                  <Input
-                    id="p-loc"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Edificio Torre Norte, piso 3"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="p-desc">Descripción</Label>
-                  <Textarea
-                    id="p-desc"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    placeholder="Detalles, alcance, notas iniciales..."
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="p-vis" className="flex items-center gap-2 cursor-pointer">
-                      {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                      {isPublic ? "Proyecto público" : "Proyecto privado"}
-                    </Label>
+          {!isGuest && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="gap-2">
+                  <Plus className="h-4 w-4" /> Nuevo proyecto
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nuevo proyecto</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="p-name">Nombre *</Label>
+                    <Input
+                      id="p-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      placeholder="Cableado oficina central"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-client">Cliente</Label>
+                    <Select value={clientId} onValueChange={setClientId}>
+                      <SelectTrigger id="p-client">
+                        <SelectValue placeholder="Selecciona un cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin cliente</SelectItem>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
-                      {isPublic
-                        ? "Todo el equipo puede ver y colaborar añadiendo entradas."
-                        : "Solo tú puedes ver y editar este proyecto."}
+                      ¿No está? <Link to="/clientes" className="text-primary hover:underline">Crear cliente</Link>
                     </p>
                   </div>
-                  <Switch id="p-vis" checked={isPublic} onCheckedChange={setIsPublic} />
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={creating}>
-                    {creating ? "Creando..." : "Crear"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-loc">Ubicación</Label>
+                    <Input
+                      id="p-loc"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Edificio Torre Norte, piso 3"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-desc">Descripción</Label>
+                    <Textarea
+                      id="p-desc"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
+                      placeholder="Detalles, alcance, notas iniciales..."
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="p-vis" className="flex items-center gap-2 cursor-pointer">
+                        {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                        {isPublic ? "Proyecto público" : "Proyecto privado"}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {isPublic
+                          ? "Todo el equipo puede ver y colaborar añadiendo entradas."
+                          : "Solo tú puedes ver y editar este proyecto."}
+                      </p>
+                    </div>
+                    <Switch id="p-vis" checked={isPublic} onCheckedChange={setIsPublic} />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Creando..." : "Crear"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
