@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2, FolderOpen, LayoutGrid, List, Camera, Video, FileText, Lock, Globe, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
