@@ -65,7 +65,7 @@ function ClientView() {
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<ProjectWithEntries[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
-  const [view, setView] = useState<"timeline" | "lista">("timeline");
+  const [view, setView] = useState<"galeria">("galeria");
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -192,11 +192,8 @@ function ClientView() {
           <div className="flex items-center gap-2">
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
-                <TabsTrigger value="timeline" className="gap-1.5">
-                  <LayoutGrid className="h-4 w-4" /> Timeline
-                </TabsTrigger>
-                <TabsTrigger value="lista" className="gap-1.5">
-                  <List className="h-4 w-4" /> Lista
+                <TabsTrigger value="galeria" className="gap-1.5">
+                  <LayoutGrid className="h-4 w-4" /> Galería
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -239,7 +236,7 @@ function ClientView() {
               Este cliente aún no tiene proyectos. Crea uno y asígnalo a este cliente desde la página de proyectos.
             </p>
           </Card>
-        ) : view === "timeline" ? (
+        ) : (
           <div className="space-y-8">
             {grouped.map((g) => (
               <section key={g.key}>
@@ -256,48 +253,6 @@ function ClientView() {
               </section>
             ))}
           </div>
-        ) : (
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Proyecto</th>
-                  <th className="text-left px-4 py-2 font-medium">Visibilidad</th>
-                  <th className="text-left px-4 py-2 font-medium">Estado</th>
-                  <th className="text-right px-4 py-2 font-medium">Entradas</th>
-                  <th className="text-right px-4 py-2 font-medium">Creado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="border-t hover:bg-muted/30 cursor-pointer"
-                    onClick={() => navigate({ to: "/proyecto/$id", params: { id: p.id } })}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{p.name}</div>
-                      {p.location && <div className="text-xs text-muted-foreground">{p.location}</div>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.visibility === "public" ? (
-                        <Badge variant="outline" className="gap-1"><Globe className="h-3 w-3" /> Público</Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1"><Lock className="h-3 w-3" /> Privado</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={p.status === "activo" ? "default" : "secondary"}>
-                        {p.status === "activo" ? "Activo" : "Finalizado"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">{p.entries.length}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatRelative(p.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
         )}
       </main>
     </div>

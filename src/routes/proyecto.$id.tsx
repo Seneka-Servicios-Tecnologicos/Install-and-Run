@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { ArrowLeft, Camera, FileText, Video, LayoutGrid, List, CheckCircle2, RotateCcw, Lock, Globe, Building2, Trash2, GitCommitVertical } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Video, LayoutGrid, CheckCircle2, RotateCcw, Lock, Globe, Building2, Trash2, GitCommitVertical } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +68,7 @@ function ProjectView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [authors, setAuthors] = useState<Record<string, ProfileLite>>({});
-  const [view, setView] = useState<"timeline" | "cronologia" | "lista">("timeline");
+  const [view, setView] = useState<"galeria" | "cronologia">("galeria");
 
   // capture state
   const [cameraMode, setCameraMode] = useState<"photo" | "video" | null>(null);
@@ -296,14 +296,11 @@ function ProjectView() {
           <div className="flex items-center gap-2 flex-wrap">
             <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
               <TabsList>
-                <TabsTrigger value="timeline" className="gap-1.5">
-                  <LayoutGrid className="h-4 w-4" /> <span className="hidden sm:inline">Timeline</span>
+                <TabsTrigger value="galeria" className="gap-1.5">
+                  <LayoutGrid className="h-4 w-4" /> <span className="hidden sm:inline">Galería</span>
                 </TabsTrigger>
                 <TabsTrigger value="cronologia" className="gap-1.5">
                   <GitCommitVertical className="h-4 w-4" /> <span className="hidden sm:inline">Cronología</span>
-                </TabsTrigger>
-                <TabsTrigger value="lista" className="gap-1.5">
-                  <List className="h-4 w-4" /> <span className="hidden sm:inline">Lista</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
