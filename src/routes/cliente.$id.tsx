@@ -166,7 +166,7 @@ function ClientView() {
     );
   }
 
-  const isCreator = client.created_by === user.id;
+  const isCreator = client.created_by === user.id && !isGuest;
 
   return (
     <div className="min-h-screen bg-background">
