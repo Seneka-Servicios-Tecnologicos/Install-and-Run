@@ -48,10 +48,40 @@ function UsersPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserStats[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-user", {
+        body: {
+          email: inviteEmail.trim().toLowerCase(),
+          full_name: inviteName.trim(),
+          redirect_to: `${window.location.origin}/reset-password`,
+        },
+      });
+      if (error) throw error;
+      const payload = data as { error?: string; ok?: boolean } | null;
+      if (payload?.error) throw new Error(payload.error);
+      toast.success(`Invitación enviada a ${inviteEmail}`);
+      setInviteEmail("");
+      setInviteName("");
+      setInviteOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo invitar";
+      toast.error(msg);
+    } finally {
+      setInviting(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
