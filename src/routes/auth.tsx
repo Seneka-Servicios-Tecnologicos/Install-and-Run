@@ -67,6 +67,23 @@ function AuthPage() {
     }
   };
 
+  const handleGuest = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: "invitado@seneka.local",
+        password: "invitado-seneka-2026",
+      });
+      if (error) throw error;
+      navigate({ to: "/" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo entrar como invitado";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <Button
