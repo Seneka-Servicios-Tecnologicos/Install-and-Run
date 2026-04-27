@@ -54,9 +54,15 @@ function UsersPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviting, setInviting] = useState(false);
 
+  const { isGuest, checked: guestChecked } = useIsGuest();
+
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (guestChecked && isGuest) navigate({ to: "/" });
+  }, [guestChecked, isGuest, navigate]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
