@@ -14,7 +14,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Acceder — Install & Report" },
-      { name: "description", content: "Inicia sesión o crea una cuenta de técnico." },
+      { name: "description", content: "Inicia sesión en tu cuenta de técnico." },
     ],
   }),
   component: AuthPage,
@@ -23,10 +23,9 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { theme, toggle, mounted } = useTheme();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -35,30 +34,34 @@ function AuthPage() {
     });
   }, [navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: name },
-          },
-        });
-        if (error) throw error;
-        toast.success("Cuenta creada. Ya puedes empezar.");
-        navigate({ to: "/" });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/" });
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate({ to: "/" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al autenticar";
       toast.error(msg.includes("Invalid login") ? "Credenciales incorrectas" : msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Te enviamos un correo con instrucciones.");
+      setMode("login");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo enviar el correo";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -87,58 +90,78 @@ function AuthPage() {
       </div>
 
       <Card className="w-full max-w-sm p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "signup" && (
+        {mode === "login" ? (
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nombre completo</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="Juan Pérez"
+                placeholder="tecnico@empresa.com"
+                autoComplete="email"
               />
             </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="tecnico@empresa.com"
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Procesando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
-          </Button>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="current-password"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Procesando..." : "Entrar"}
+            </Button>
 
-        <button
-          type="button"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {mode === "login"
-            ? "¿No tienes cuenta? Regístrate"
-            : "¿Ya tienes cuenta? Inicia sesión"}
-        </button>
+            <button
+              type="button"
+              onClick={() => setMode("forgot")}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleForgot} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Te enviaremos un enlace para restablecer tu contraseña.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="email-forgot">Email</Label>
+              <Input
+                id="email-forgot"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="tecnico@empresa.com"
+                autoComplete="email"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Enviando..." : "Enviar enlace"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Volver al inicio de sesión
+            </button>
+          </form>
+        )}
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          ¿No tienes cuenta? Pídele a un compañero del equipo que te invite desde
+          la sección <span className="font-medium text-foreground">Usuarios</span>.
+        </p>
       </Card>
     </div>
   );
