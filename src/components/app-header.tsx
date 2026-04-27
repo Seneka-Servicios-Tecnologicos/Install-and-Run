@@ -91,13 +91,15 @@ export function AppHeader({ title, showLogout = true }: AppHeaderProps) {
         >
           <Building2 className="h-3.5 w-3.5" /> Clientes
         </Link>
-        <Link
-          to="/usuarios"
-          className="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-1.5 whitespace-nowrap"
-          activeProps={{ className: "px-2.5 py-1 rounded-md text-foreground bg-muted flex items-center gap-1.5 whitespace-nowrap" }}
-        >
-          <Users className="h-3.5 w-3.5" /> Usuarios
-        </Link>
+        {!isGuest && (
+          <Link
+            to="/usuarios"
+            className="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            activeProps={{ className: "px-2.5 py-1 rounded-md text-foreground bg-muted flex items-center gap-1.5 whitespace-nowrap" }}
+          >
+            <Users className="h-3.5 w-3.5" /> Usuarios
+          </Link>
+        )}
       </nav>
     </header>
   );
