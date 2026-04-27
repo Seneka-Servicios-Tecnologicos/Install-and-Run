@@ -153,11 +153,59 @@ function UsersPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="mx-auto max-w-5xl px-4 py-6 pb-24">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Usuarios del equipo</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Actividad y aportes de cada técnico (basada en lo que puedes ver).
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Usuarios del equipo</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Actividad y aportes de cada técnico (basada en lo que puedes ver).
+            </p>
+          </div>
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-1.5">
+                <UserPlus className="h-4 w-4" /> Invitar usuario
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Invitar a un nuevo técnico</DialogTitle>
+                <DialogDescription>
+                  Le enviaremos un correo con un enlace para que defina su contraseña
+                  y acceda al equipo.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleInvite} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-name">Nombre completo</Label>
+                  <Input
+                    id="invite-name"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    placeholder="Juan Pérez"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Email</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="tecnico@empresa.com"
+                    required
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setInviteOpen(false)} disabled={inviting}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={inviting}>
+                    {inviting ? "Enviando..." : "Enviar invitación"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {loadingData ? (
