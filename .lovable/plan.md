@@ -1,65 +1,59 @@
+## 1. Quitar vista "Lista" y renombrar Timeline → Galería
 
-# Report & Run — App de reportes IT
+**Archivos:** `src/routes/proyecto.$id.tsx`, `src/routes/cliente.$id.tsx`
 
-App en español con modo claro/oscuro para documentar trabajos de campo (cableado, instalaciones, mantenimiento) con evidencia visual fechada.
+- Cambiar el tipo de estado `view` para que solo acepte `"galeria" | "cronologia"` (default `"galeria"`).
+- Eliminar el `<TabsTrigger value="lista">` y todo el bloque de renderizado `view === "lista"` en ambas rutas.
+- Renombrar el trigger "Timeline" a **"Galería"** (mantener el ícono `LayoutGrid` que es coherente con cuadrícula). Cambiar `value="timeline"` → `value="galeria"` y la condición de render correspondiente.
+- En `cliente.$id.tsx`, que actualmente solo tiene Timeline/Lista, queda solo Galería (cuadrícula) — opcionalmente añadir Cronología ahí también para consistencia (lo dejo fuera salvo que lo pidas).
 
-## Autenticación
-- Login con email + contraseña vía Lovable Cloud.
-- Tabla `profiles` con nombre del técnico (auto-creada al registrarse).
-- Rutas protegidas: solo usuarios autenticados acceden a proyectos.
-- Cada técnico ve sus propios proyectos (RLS por `user_id`).
+## 2. Crear nuevos usuarios — flujo correcto
 
-## Estructura
+Hoy `auth.tsx` permite que cualquiera se auto-registre con email + contraseña. Como ahora los proyectos son colaborativos entre usuarios autenticados, conviene un flujo controlado. Propongo:
 
-### 1. Dashboard `/`
-- Lista de proyectos del técnico con nombre, ubicación, fecha de creación, miniatura de la última entrada y contador de entradas.
-- Botón "Nuevo proyecto" → modal (nombre, cliente/ubicación, descripción opcional).
-- Búsqueda por nombre y filtro por estado (activo/finalizado).
+### A. Restablecimiento de contraseña (faltante hoy)
 
-### 2. Vista de proyecto `/proyecto/$id`
-Header con nombre del proyecto, ubicación, fecha y botón "Finalizar/Reabrir".
+- Añadir enlace **"¿Olvidaste tu contraseña?"** en `src/routes/auth.tsx` que llame:
+  ```ts
+  supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`
+  })
+  ```
+- Crear nueva ruta pública `src/routes/reset-password.tsx` con formulario de nueva contraseña que llama `supabase.auth.updateUser({ password })`.
 
-**Dos vistas alternables (toggle arriba a la derecha):**
-- **Timeline (default)**: grid minimalista de tarjetas con miniatura grande, ícono de tipo (📷 foto / 🎥 video / 📝 nota), título corto y timestamp relativo ("hace 2h"). Agrupado visualmente por día con separador sticky ("Hoy", "Ayer", "12 abr 2026").
-- **Lista**: tabla compacta cronológica — columnas: hora, tipo, título, descripción breve, miniatura pequeña.
+### B. Invitar usuarios desde la app (recomendado)
 
-**Botón flotante (+)** abre menú radial:
-- 📷 Tomar foto (cámara en vivo)
-- 🎥 Grabar video (cámara en vivo)
-- 🖼️ Subir desde galería (imagen o video)
-- 📝 Nota de texto
+En `src/routes/usuarios.tsx` añadir botón **"Invitar usuario"** (visible para todos los autenticados, según pediste antes) que abre un diálogo con email + nombre. Al enviar:
 
-**Modal de captura** para cada entrada:
-- Preview del archivo
-- Campo "Título" (ej. "Patch panel piso 3")
-- Campo "Descripción/notas" (textarea)
-- Timestamp automático (editable si es necesario)
-- Botón "Guardar"
+1. Llama a una **edge function** nueva `invite-user` (deployada automáticamente).
+2. La function usa `SUPABASE_SERVICE_ROLE_KEY` (ya existe como secret) para llamar `supabase.auth.admin.inviteUserByEmail(email, { data: { full_name } })`.
+3. Supabase envía automáticamente el email de invitación; el usuario hace click, llega a `/reset-password` y define su contraseña inicial.
+4. El trigger `handle_new_user` ya existente crea su `profile` y le asigna rol `tecnico` automáticamente.
 
-### 3. Detalle de entrada `/proyecto/$id/entrada/$entradaId`
-- Vista ampliada del medio (imagen full-screen / player de video / nota completa).
-- Metadatos: fecha y hora exactas, autor, tamaño original vs. comprimido.
-- Editar título/descripción, eliminar.
+### C. Emails branded (opcional, lo recomiendo)
 
-## Compresión agresiva (cliente, antes de subir)
-- **Imágenes**: redimensionar a máx 1280px lado mayor, JPEG calidad 70% (vía canvas API). Típicamente reduce 5MB → ~200KB.
-- **Videos**: re-encode con MediaRecorder API a 720p, bitrate ~1Mbps, formato webm. Para uploads desde galería que no se puedan re-encodear en navegador, comprimir resolución y mostrar advertencia de tamaño.
-- **Captura desde cámara**: usar `getUserMedia` con constraints de baja resolución directamente (1280x720 fotos, 720p video).
-- Mostrar tamaño original → tamaño final antes de subir.
+Por defecto Supabase envía los emails de invitación, confirmación y reset con plantillas genéricas desde su dominio. Si quieres que los correos lleguen desde **tu dominio** con branding Seneka (logo, colores), hay que configurar un dominio de email en Lovable Cloud y luego scaffoldear las plantillas de auth. Esto requiere un dominio que controles (ej. `seneka.com`) y añadir registros DNS. **Te lo pregunto abajo** porque cambia el alcance.
 
-## Backend (Lovable Cloud)
-- **Tablas**: `profiles`, `projects` (user_id, nombre, ubicación, descripción, status, timestamps), `entries` (project_id, user_id, type, title, description, media_url, thumbnail_url, original_size, compressed_size, captured_at, created_at).
-- **Roles separados**: tabla `user_roles` con enum `app_role` (siguiendo el patrón seguro) — preparado para futuro rol admin.
-- **Storage buckets**: `project-media` (privado, RLS por dueño del proyecto). Thumbnails generadas en cliente al subir.
-- **RLS estricto**: cada usuario solo ve/edita sus proyectos y entradas.
+### D. ¿Mantener auto-registro abierto?
 
-## Diseño
-- **Modo claro y oscuro** con toggle persistente (localStorage).
-- Estética minimalista, mucho espacio en blanco, tipografía clara (Inter).
-- Paleta neutra con un acento (azul) para botones primarios.
-- Cards con bordes suaves, sombras ligeras solo en modo claro.
-- Mobile-first: la app debe funcionar perfectamente en celular (caso de uso principal en campo).
-- Iconos Lucide, animaciones sutiles.
+Hoy cualquier persona con la URL puede crear cuenta. Como los proyectos son colaborativos, opciones:
+- **Cerrado:** quitar el modo "signup" de `auth.tsx`, solo se entra por invitación.
+- **Abierto:** dejarlo como está, además de permitir invitaciones.
 
-## Idioma
-- Toda la UI en español (botones, etiquetas, mensajes de error, fechas con `date-fns/locale/es`).
+Te lo pregunto abajo.
+
+## Archivos a modificar/crear
+
+- ✏️ `src/routes/proyecto.$id.tsx` — quitar Lista, renombrar a Galería
+- ✏️ `src/routes/cliente.$id.tsx` — quitar Lista, renombrar a Galería
+- ✏️ `src/routes/auth.tsx` — añadir "¿Olvidaste tu contraseña?"
+- ➕ `src/routes/reset-password.tsx` — nueva ruta pública
+- ✏️ `src/routes/usuarios.tsx` — botón "Invitar usuario" + diálogo
+- ➕ `supabase/functions/invite-user/index.ts` — edge function con service role
+- ✏️ `supabase/config.toml` — registro de la function
+
+## Preguntas antes de implementar
+
+1. ¿Cierro el auto-registro en `/auth` (solo por invitación) o lo dejo abierto?
+2. ¿Quieres branding de email con tu dominio (Seneka) o usamos los emails por defecto de Supabase de momento?
+3. En `cliente.$id.tsx` actualmente solo hay Timeline/Lista — ¿añado también la vista Cronología ahí, o la dejo solo con Galería?
