@@ -45,6 +45,7 @@ interface AuthorProfile {
 function EntryDetail() {
   const { id, entradaId } = Route.useParams();
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [author, setAuthor] = useState<AuthorProfile | null>(null);
