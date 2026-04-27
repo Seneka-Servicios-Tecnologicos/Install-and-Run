@@ -394,21 +394,24 @@ function ProjectView() {
         )}
       </main>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={handleFile}
-      />
+      {!isGuest && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleFile}
+        />
+      )}
 
-      <FabMenu
-        onPickPhoto={() => setCameraMode("photo")}
-        onPickVideo={() => setCameraMode("video")}
-        onPickFile={() => fileInputRef.current?.click()}
-        onPickNote={() => setDraft({ type: "note" })}
-      />
-
+      {!isGuest && (
+        <FabMenu
+          onPickPhoto={() => setCameraMode("photo")}
+          onPickVideo={() => setCameraMode("video")}
+          onPickFile={() => fileInputRef.current?.click()}
+          onPickNote={() => setDraft({ type: "note" })}
+        />
+      )}
       {cameraMode && (
         <CameraCapture
           mode={cameraMode}
