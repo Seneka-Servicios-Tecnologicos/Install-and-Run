@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { formatRelative } from "@/lib/format";
 import { toast } from "sonner";
 
