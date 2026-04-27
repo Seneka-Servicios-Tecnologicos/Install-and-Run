@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppHeader } from "@/components/app-header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
 import { getSignedUrl } from "@/lib/storage";
