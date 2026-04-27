@@ -172,7 +172,7 @@ function ProjectView() {
     return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [entries]);
 
-  const isOwner = !!project && project.user_id === user?.id;
+  const isOwner = !!project && project.user_id === user?.id && !isGuest;
   const isEntryDetailRoute = location.pathname.includes("/entrada/");
 
   if (isEntryDetailRoute) {
