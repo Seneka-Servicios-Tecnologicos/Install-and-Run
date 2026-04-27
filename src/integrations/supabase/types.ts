@@ -204,6 +204,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_guest: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "invitado"
