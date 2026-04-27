@@ -54,6 +54,7 @@ interface ClientRow {
 
 function ClientsPage() {
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
