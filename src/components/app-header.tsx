@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Moon, Sun, LogOut, FolderKanban, Users, Building2 } from "lucide-react";
+import { Moon, Sun, LogOut, FolderKanban, Users, Building2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { SenekaLogo } from "@/components/seneka-logo";
+import { useIsGuest } from "@/hooks/use-is-guest";
 
 interface AppHeaderProps {
   title?: string;
@@ -12,6 +14,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, showLogout = true }: AppHeaderProps) {
   const { theme, toggle, mounted } = useTheme();
+  const { isGuest } = useIsGuest();
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
