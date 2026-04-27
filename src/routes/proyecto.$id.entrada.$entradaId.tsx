@@ -89,7 +89,7 @@ function EntryDetail() {
     })();
   }, [user, entradaId, id, navigate]);
 
-  const isOwner = !!entry && !!user && entry.user_id === user.id;
+  const isOwner = !!entry && !!user && entry.user_id === user.id && !isGuest;
 
   const handleSave = async () => {
     if (!entry) return;
