@@ -62,6 +62,7 @@ interface EntryPreview {
 function ClientView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<ProjectWithEntries[]>([]);
