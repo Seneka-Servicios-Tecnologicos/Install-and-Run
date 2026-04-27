@@ -64,6 +64,7 @@ interface ClientOpt {
 
 function Dashboard() {
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [clients, setClients] = useState<ClientOpt[]>([]);
