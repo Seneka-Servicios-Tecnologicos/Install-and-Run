@@ -22,6 +22,7 @@ import { CameraCapture } from "@/components/camera-capture";
 import { EntryDialog } from "@/components/entry-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
 import { getSignedUrl, deleteMedia } from "@/lib/storage";
