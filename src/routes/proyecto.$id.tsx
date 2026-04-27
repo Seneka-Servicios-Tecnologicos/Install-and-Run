@@ -22,6 +22,7 @@ import { CameraCapture } from "@/components/camera-capture";
 import { EntryDialog } from "@/components/entry-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
 import { getSignedUrl, deleteMedia } from "@/lib/storage";
@@ -61,6 +62,7 @@ interface ProfileLite { id: string; full_name: string | null; email: string | nu
 function ProjectView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
@@ -170,7 +172,7 @@ function ProjectView() {
     return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [entries]);
 
-  const isOwner = !!project && project.user_id === user?.id;
+  const isOwner = !!project && project.user_id === user?.id && !isGuest;
   const isEntryDetailRoute = location.pathname.includes("/entrada/");
 
   if (isEntryDetailRoute) {
@@ -392,21 +394,24 @@ function ProjectView() {
         )}
       </main>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={handleFile}
-      />
+      {!isGuest && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleFile}
+        />
+      )}
 
-      <FabMenu
-        onPickPhoto={() => setCameraMode("photo")}
-        onPickVideo={() => setCameraMode("video")}
-        onPickFile={() => fileInputRef.current?.click()}
-        onPickNote={() => setDraft({ type: "note" })}
-      />
-
+      {!isGuest && (
+        <FabMenu
+          onPickPhoto={() => setCameraMode("photo")}
+          onPickVideo={() => setCameraMode("video")}
+          onPickFile={() => fileInputRef.current?.click()}
+          onPickNote={() => setDraft({ type: "note" })}
+        />
+      )}
       {cameraMode && (
         <CameraCapture
           mode={cameraMode}

@@ -67,6 +67,23 @@ function AuthPage() {
     }
   };
 
+  const handleGuest = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: "invitado@seneka.local",
+        password: "invitado-seneka-2026",
+      });
+      if (error) throw error;
+      navigate({ to: "/" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo entrar como invitado";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <Button
@@ -156,6 +173,28 @@ function AuthPage() {
               Volver al inicio de sesión
             </button>
           </form>
+        )}
+
+        {mode === "login" && (
+          <>
+            <div className="my-4 flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">o</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGuest}
+              disabled={loading}
+            >
+              Entrar como invitado
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Acceso de solo lectura — explora proyectos sin modificar nada.
+            </p>
+          </>
         )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">

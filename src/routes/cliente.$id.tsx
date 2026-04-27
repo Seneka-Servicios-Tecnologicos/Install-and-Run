@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
 import { getSignedUrl } from "@/lib/storage";
@@ -61,6 +62,7 @@ interface EntryPreview {
 function ClientView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<ProjectWithEntries[]>([]);
@@ -164,7 +166,7 @@ function ClientView() {
     );
   }
 
-  const isCreator = client.created_by === user.id;
+  const isCreator = client.created_by === user.id && !isGuest;
 
   return (
     <div className="min-h-screen bg-background">
