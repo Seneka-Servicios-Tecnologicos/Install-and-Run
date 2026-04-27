@@ -145,6 +145,31 @@ function AuthPage() {
               ¿Olvidaste tu contraseña?
             </button>
           </form>
+        ) : null}
+
+        {mode === "login" && (
+          <>
+            <div className="my-4 flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">o</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGuest}
+              disabled={loading}
+            >
+              Entrar como invitado
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Acceso de solo lectura — explora proyectos sin modificar nada.
+            </p>
+          </>
+        )}
+
+        {mode === "forgot" && null}
         ) : (
           <form onSubmit={handleForgot} className="space-y-4">
             <p className="text-sm text-muted-foreground">
