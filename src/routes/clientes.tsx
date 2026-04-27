@@ -163,57 +163,59 @@ function ClientsPage() {
               {clients.length} {clients.length === 1 ? "cliente" : "clientes"}
             </p>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" className="gap-2">
-                <Plus className="h-4 w-4" /> Nuevo cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo cliente</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="c-name">Nombre *</Label>
-                  <Input
-                    id="c-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    placeholder="Empresa S.A."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-contact">Contacto</Label>
-                  <Input
-                    id="c-contact"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    placeholder="Juan Pérez · juan@empresa.com · +52..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-notes">Notas</Label>
-                  <Textarea
-                    id="c-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Información relevante del cliente..."
-                  />
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={creating}>
-                    {creating ? "Creando..." : "Crear"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {!isGuest && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="gap-2">
+                  <Plus className="h-4 w-4" /> Nuevo cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nuevo cliente</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="c-name">Nombre *</Label>
+                    <Input
+                      id="c-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      placeholder="Empresa S.A."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="c-contact">Contacto</Label>
+                    <Input
+                      id="c-contact"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      placeholder="Juan Pérez · juan@empresa.com · +52..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="c-notes">Notas</Label>
+                    <Textarea
+                      id="c-notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Información relevante del cliente..."
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Creando..." : "Crear"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="relative mb-6">
