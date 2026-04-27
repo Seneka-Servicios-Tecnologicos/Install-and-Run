@@ -62,6 +62,7 @@ interface ProfileLite { id: string; full_name: string | null; email: string | nu
 function ProjectView() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
+  const { isGuest } = useIsGuest();
   const navigate = useNavigate();
   const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
