@@ -1,59 +1,70 @@
-## 1. Quitar vista "Lista" y renombrar Timeline → Galería
+# Hacer la app independiente de Lovable y desplegable en Vercel
 
-**Archivos:** `src/routes/proyecto.$id.tsx`, `src/routes/cliente.$id.tsx`
+## Diagnóstico
 
-- Cambiar el tipo de estado `view` para que solo acepte `"galeria" | "cronologia"` (default `"galeria"`).
-- Eliminar el `<TabsTrigger value="lista">` y todo el bloque de renderizado `view === "lista"` en ambas rutas.
-- Renombrar el trigger "Timeline" a **"Galería"** (mantener el ícono `LayoutGrid` que es coherente con cuadrícula). Cambiar `value="timeline"` → `value="galeria"` y la condición de render correspondiente.
-- En `cliente.$id.tsx`, que actualmente solo tiene Timeline/Lista, queda solo Galería (cuadrícula) — opcionalmente añadir Cronología ahí también para consistencia (lo dejo fuera salvo que lo pidas).
+El 404 en Vercel viene de tres causas combinadas:
 
-## 2. Crear nuevos usuarios — flujo correcto
+1. **Build target equivocado.** El proyecto está configurado para **Cloudflare Workers** (`wrangler.jsonc` + `@cloudflare/vite-plugin` activado por `@lovable.dev/vite-tanstack-config`). El output de ese build no es compatible con Vercel — Vercel sirve `dist/` como estático y no encuentra `index.html` para rutas como `/clientes`, de ahí el 404.
+2. **Variables de entorno ausentes en Vercel.** El `.env` está en `.gitignore`, así que `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` no llegan al build de Vercel. Aunque arreglemos el routing, Supabase no inicializa.
+3. **Sin preset Node para TanStack Start.** Para SSR en Vercel hay que decirle a TanStack Start que genere salida tipo Node/Vercel, no Worker.
 
-Hoy `auth.tsx` permite que cualquiera se auto-registre con email + contraseña. Como ahora los proyectos son colaborativos entre usuarios autenticados, conviene un flujo controlado. Propongo:
+## Cambios a realizar
 
-### A. Restablecimiento de contraseña (faltante hoy)
+### 1. Cambiar el target de build a Vercel (Node SSR)
+- En `vite.config.ts`, pasar opciones al wrapper de Lovable:
+  - `cloudflare: false` para desactivar el plugin de Cloudflare en build.
+  - `tanstackStart: { target: "vercel" }` para que TanStack Start emita el handler serverless que Vercel espera (`.vercel/output/`).
+- Eliminar `wrangler.jsonc` (ya no aplica) y la dependencia `@cloudflare/vite-plugin` del `package.json` (queda inerte).
 
-- Añadir enlace **"¿Olvidaste tu contraseña?"** en `src/routes/auth.tsx` que llame:
-  ```ts
-  supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`
-  })
-  ```
-- Crear nueva ruta pública `src/routes/reset-password.tsx` con formulario de nueva contraseña que llama `supabase.auth.updateUser({ password })`.
+### 2. Configurar variables de entorno en Vercel
+- Documentar (en un `README.md` actualizado) qué variables hay que añadir en el dashboard de Vercel → Settings → Environment Variables:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`
+  - `VITE_SUPABASE_PROJECT_ID`
+  - `SUPABASE_URL`
+  - `SUPABASE_PUBLISHABLE_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY` (solo si en algún momento usamos server functions admin; hoy no es estrictamente necesario porque `invite-user` vive en Supabase Edge).
+- Añadir un `.env.example` con las claves (sin valores secretos) para que cualquiera pueda clonar y desplegar.
+- Mantener `.env` en `.gitignore` (correcto). Las claves anon son públicas pero igual se gestionan vía Vercel.
 
-### B. Invitar usuarios desde la app (recomendado)
+### 3. Añadir `vercel.json` mínimo
+- Configurar `framework: null` y dejar que el preset de TanStack Start maneje el output. Solo hace falta si Vercel no autodetecta — en la mayoría de casos no es necesario, pero lo incluimos como fallback con `buildCommand: "vite build"` y `outputDirectory: ".vercel/output"`.
 
-En `src/routes/usuarios.tsx` añadir botón **"Invitar usuario"** (visible para todos los autenticados, según pediste antes) que abre un diálogo con email + nombre. Al enviar:
+### 4. Verificar Supabase y RLS independientes de Lovable
+- El cliente Supabase ya lee de `import.meta.env.VITE_SUPABASE_URL` con fallback a `process.env.SUPABASE_URL` — compatible con cualquier host. ✔
+- Las RLS policies y la función Edge `invite-user` viven dentro del proyecto Supabase administrado, no en Lovable. Siguen funcionando desde cualquier dominio. ✔
+- La función `invite-user` usa `redirectTo: ${origin}/reset-password`. Hay que asegurarse de que el dominio de Vercel esté en **Supabase → Authentication → URL Configuration → Redirect URLs**. Lo dejaré documentado en el README.
 
-1. Llama a una **edge function** nueva `invite-user` (deployada automáticamente).
-2. La function usa `SUPABASE_SERVICE_ROLE_KEY` (ya existe como secret) para llamar `supabase.auth.admin.inviteUserByEmail(email, { data: { full_name } })`.
-3. Supabase envía automáticamente el email de invitación; el usuario hace click, llega a `/reset-password` y define su contraseña inicial.
-4. El trigger `handle_new_user` ya existente crea su `profile` y le asigna rol `tecnico` automáticamente.
+### 5. Limpieza del repositorio para auto-hospedaje
+- README con pasos: clonar, `bun install`, configurar env vars, `vercel deploy`.
+- Quitar `.lovable/` del control de versiones si está committeado (añadir a `.gitignore`).
+- Quitar `wrangler.jsonc`.
 
-### C. Emails branded (opcional, lo recomiendo)
+## Detalles técnicos (resumen)
 
-Por defecto Supabase envía los emails de invitación, confirmación y reset con plantillas genéricas desde su dominio. Si quieres que los correos lleguen desde **tu dominio** con branding Seneka (logo, colores), hay que configurar un dominio de email en Lovable Cloud y luego scaffoldear las plantillas de auth. Esto requiere un dominio que controles (ej. `seneka.com`) y añadir registros DNS. **Te lo pregunto abajo** porque cambia el alcance.
+```text
+vite.config.ts
+└─ defineConfig({
+     cloudflare: false,
+     tanstackStart: { target: "vercel" },
+   })
 
-### D. ¿Mantener auto-registro abierto?
+Vercel env vars (Production + Preview):
+  VITE_SUPABASE_URL=...
+  VITE_SUPABASE_PUBLISHABLE_KEY=...
+  VITE_SUPABASE_PROJECT_ID=daakyngvtaidjtjvxutm
+  SUPABASE_URL=...
+  SUPABASE_PUBLISHABLE_KEY=...
 
-Hoy cualquier persona con la URL puede crear cuenta. Como los proyectos son colaborativos, opciones:
-- **Cerrado:** quitar el modo "signup" de `auth.tsx`, solo se entra por invitación.
-- **Abierto:** dejarlo como está, además de permitir invitaciones.
+Supabase Auth → Redirect URLs:
+  https://<tu-dominio-vercel>.vercel.app/reset-password
+  https://<tu-dominio-vercel>.vercel.app/**
+```
 
-Te lo pregunto abajo.
+## Lo que NO hace falta cambiar
+- Código de rutas, componentes, hooks, Supabase client → ya son agnósticos al host.
+- Schema de base de datos y RLS → independiente de Lovable, vive en el proyecto Supabase.
+- Edge function `invite-user` → se mantiene en Supabase, accesible desde cualquier dominio.
 
-## Archivos a modificar/crear
-
-- ✏️ `src/routes/proyecto.$id.tsx` — quitar Lista, renombrar a Galería
-- ✏️ `src/routes/cliente.$id.tsx` — quitar Lista, renombrar a Galería
-- ✏️ `src/routes/auth.tsx` — añadir "¿Olvidaste tu contraseña?"
-- ➕ `src/routes/reset-password.tsx` — nueva ruta pública
-- ✏️ `src/routes/usuarios.tsx` — botón "Invitar usuario" + diálogo
-- ➕ `supabase/functions/invite-user/index.ts` — edge function con service role
-- ✏️ `supabase/config.toml` — registro de la function
-
-## Preguntas antes de implementar
-
-1. ¿Cierro el auto-registro en `/auth` (solo por invitación) o lo dejo abierto?
-2. ¿Quieres branding de email con tu dominio (Seneka) o usamos los emails por defecto de Supabase de momento?
-3. En `cliente.$id.tsx` actualmente solo hay Timeline/Lista — ¿añado también la vista Cronología ahí, o la dejo solo con Galería?
+## Resultado esperado
+Tras estos cambios, `git push` a GitHub e import en Vercel → build exitoso → SSR funcionando en `/`, `/clientes`, `/proyecto/$id`, etc., sin 404, con la misma base de datos y auth que en Lovable.
