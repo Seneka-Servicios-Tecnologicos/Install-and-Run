@@ -272,8 +272,16 @@ function ClientView() {
 
         <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Building2 className="h-6 w-6" />
+            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 overflow-hidden">
+              {client.logo_path ? (
+                <img
+                  src={getClientLogoUrl(client.logo_path, String(logoVersion)) ?? ""}
+                  alt={client.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Building2 className="h-6 w-6" />
+              )}
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
@@ -294,36 +302,109 @@ function ClientView() {
               </TabsList>
             </Tabs>
             {isCreator && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Se eliminará <span className="font-medium">{client.name}</span>.
-                      {projects.length > 0
-                        ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
-                        : " Esta acción no se puede deshacer."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteClient}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Eliminar
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={openEdit}
+                  aria-label="Editar cliente"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Se eliminará <span className="font-medium">{client.name}</span>.
+                        {projects.length > 0
+                          ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                          : " Esta acción no se puede deshacer."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteClient}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </div>
         </div>
+
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar cliente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0 border">
+                  {eLogoPreview ? (
+                    <img src={eLogoPreview} alt="" className="h-full w-full object-cover" />
+                  ) : !eRemoveLogo && client.logo_path ? (
+                    <img
+                      src={getClientLogoUrl(client.logo_path, String(logoVersion)) ?? ""}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleELogoChange}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <ImagePlus className="h-4 w-4 mr-1" /> {eLogoFile || client.logo_path ? "Cambiar" : "Subir logo"}
+                  </Button>
+                  {(eLogoFile || (client.logo_path && !eRemoveLogo)) && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => {
+                      setELogoFile(null);
+                      if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+                      setELogoPreview(null);
+                      if (client.logo_path) setERemoveLogo(true);
+                    }}>
+                      <X className="h-4 w-4 mr-1" /> Quitar
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-name">Nombre *</Label>
+                <Input id="e-name" value={eName} onChange={(e) => setEName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-contact">Contacto</Label>
+                <Input id="e-contact" value={eContact} onChange={(e) => setEContact(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-notes">Notas</Label>
+                <Textarea id="e-notes" value={eNotes} onChange={(e) => setENotes(e.target.value)} rows={3} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {projects.length === 0 ? (
           <Card className="p-12 text-center">
