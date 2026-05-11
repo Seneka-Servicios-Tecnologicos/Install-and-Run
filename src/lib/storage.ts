@@ -37,3 +37,25 @@ export async function deleteMedia(paths: string[]): Promise<void> {
   if (valid.length === 0) return;
   await supabase.storage.from("project-media").remove(valid);
 }
+
+export async function uploadClientLogo(clientId: string, blob: Blob): Promise<string> {
+  const path = `${clientId}/logo.jpg`;
+  const { error } = await supabase.storage
+    .from("client-logos")
+    .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+  if (error) throw error;
+  return path;
+}
+
+export async function deleteClientLogo(path: string): Promise<void> {
+  if (!path) return;
+  await supabase.storage.from("client-logos").remove([path]);
+}
+
+export function getClientLogoUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/client-logos/${path}?v=${Date.now()}`;
+}
+
