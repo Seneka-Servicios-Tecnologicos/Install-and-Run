@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2, Pencil, ImagePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +32,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
-import { getSignedUrl } from "@/lib/storage";
+import { getSignedUrl, uploadClientLogo, deleteClientLogo, getClientLogoUrl } from "@/lib/storage";
+import { compressLogo } from "@/lib/compress";
 import { format, startOfDay } from "date-fns";
 
 export const Route = createFileRoute("/cliente/$id")({
@@ -37,6 +48,7 @@ interface Client {
   name: string;
   contact: string | null;
   notes: string | null;
+  logo_path: string | null;
   created_by: string;
 }
 interface ProjectWithEntries {
@@ -68,6 +80,18 @@ function ClientView() {
   const [projects, setProjects] = useState<ProjectWithEntries[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [view, setView] = useState<"galeria">("galeria");
+  const [logoVersion, setLogoVersion] = useState(0);
+
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [eName, setEName] = useState("");
+  const [eContact, setEContact] = useState("");
+  const [eNotes, setENotes] = useState("");
+  const [eLogoFile, setELogoFile] = useState<File | null>(null);
+  const [eLogoPreview, setELogoPreview] = useState<string | null>(null);
+  const [eRemoveLogo, setERemoveLogo] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -78,7 +102,7 @@ function ClientView() {
     (async () => {
       const { data: c } = await supabase
         .from("clients")
-        .select("id, name, contact, notes, created_by")
+        .select("id, name, contact, notes, logo_path, created_by")
         .eq("id", id)
         .maybeSingle();
       if (!c) {
@@ -149,6 +173,9 @@ function ClientView() {
         return;
       }
     }
+    if (client.logo_path) {
+      await deleteClientLogo(client.logo_path).catch(() => {});
+    }
     const { error } = await supabase.from("clients").delete().eq("id", client.id);
     if (error) {
       toast.error("Error al eliminar cliente");
@@ -156,6 +183,73 @@ function ClientView() {
     }
     toast.success("Cliente eliminado");
     navigate({ to: "/clientes" });
+  };
+
+  const openEdit = () => {
+    if (!client) return;
+    setEName(client.name);
+    setEContact(client.contact ?? "");
+    setENotes(client.notes ?? "");
+    setELogoFile(null);
+    if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+    setELogoPreview(null);
+    setERemoveLogo(false);
+    setEditOpen(true);
+  };
+
+  const handleELogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecciona una imagen");
+      return;
+    }
+    if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+    setELogoFile(f);
+    setELogoPreview(URL.createObjectURL(f));
+    setERemoveLogo(false);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    setSaving(true);
+    let logoPath: string | null | undefined = undefined; // undefined = no change
+    try {
+      if (eLogoFile) {
+        const compressed = await compressLogo(eLogoFile);
+        logoPath = await uploadClientLogo(client.id, compressed);
+      } else if (eRemoveLogo && client.logo_path) {
+        await deleteClientLogo(client.logo_path).catch(() => {});
+        logoPath = null;
+      }
+    } catch {
+      setSaving(false);
+      toast.error("Error subiendo el logo");
+      return;
+    }
+    const updates: { name: string; contact: string | null; notes: string | null; logo_path?: string | null } = {
+      name: eName,
+      contact: eContact || null,
+      notes: eNotes || null,
+    };
+    if (logoPath !== undefined) updates.logo_path = logoPath;
+    const { error } = await supabase.from("clients").update(updates).eq("id", client.id);
+    setSaving(false);
+    if (error) {
+      toast.error("Error al guardar cambios");
+      return;
+    }
+    toast.success("Cliente actualizado");
+    setClient({
+      ...client,
+      name: eName,
+      contact: eContact || null,
+      notes: eNotes || null,
+      logo_path: logoPath !== undefined ? logoPath : client.logo_path,
+    });
+    setLogoVersion((v) => v + 1);
+    setEditOpen(false);
   };
 
   if (loading || !user || !client) {
@@ -178,8 +272,16 @@ function ClientView() {
 
         <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Building2 className="h-6 w-6" />
+            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 overflow-hidden">
+              {client.logo_path ? (
+                <img
+                  src={getClientLogoUrl(client.logo_path, String(logoVersion)) ?? ""}
+                  alt={client.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Building2 className="h-6 w-6" />
+              )}
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
@@ -200,36 +302,109 @@ function ClientView() {
               </TabsList>
             </Tabs>
             {isCreator && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Se eliminará <span className="font-medium">{client.name}</span>.
-                      {projects.length > 0
-                        ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
-                        : " Esta acción no se puede deshacer."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteClient}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Eliminar
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={openEdit}
+                  aria-label="Editar cliente"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cliente">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar este cliente?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Se eliminará <span className="font-medium">{client.name}</span>.
+                        {projects.length > 0
+                          ? ` Sus ${projects.length} ${projects.length === 1 ? "proyecto quedará" : "proyectos quedarán"} sin cliente asignado (no se eliminarán).`
+                          : " Esta acción no se puede deshacer."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteClient}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </div>
         </div>
+
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar cliente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0 border">
+                  {eLogoPreview ? (
+                    <img src={eLogoPreview} alt="" className="h-full w-full object-cover" />
+                  ) : !eRemoveLogo && client.logo_path ? (
+                    <img
+                      src={getClientLogoUrl(client.logo_path, String(logoVersion)) ?? ""}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleELogoChange}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <ImagePlus className="h-4 w-4 mr-1" /> {eLogoFile || client.logo_path ? "Cambiar" : "Subir logo"}
+                  </Button>
+                  {(eLogoFile || (client.logo_path && !eRemoveLogo)) && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => {
+                      setELogoFile(null);
+                      if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+                      setELogoPreview(null);
+                      if (client.logo_path) setERemoveLogo(true);
+                    }}>
+                      <X className="h-4 w-4 mr-1" /> Quitar
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-name">Nombre *</Label>
+                <Input id="e-name" value={eName} onChange={(e) => setEName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-contact">Contacto</Label>
+                <Input id="e-contact" value={eContact} onChange={(e) => setEContact(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="e-notes">Notas</Label>
+                <Textarea id="e-notes" value={eNotes} onChange={(e) => setENotes(e.target.value)} rows={3} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {projects.length === 0 ? (
           <Card className="p-12 text-center">

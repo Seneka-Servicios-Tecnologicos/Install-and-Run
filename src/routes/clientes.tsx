@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, Building2, Trash2 } from "lucide-react";
+import { Plus, Search, Building2, Trash2, ImagePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
+import { compressLogo } from "@/lib/compress";
+import { uploadClientLogo, deleteClientLogo, getClientLogoUrl } from "@/lib/storage";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
@@ -47,6 +49,7 @@ interface ClientRow {
   name: string;
   contact: string | null;
   notes: string | null;
+  logo_path: string | null;
   created_at: string;
   created_by: string;
   project_count: number;
@@ -62,7 +65,10 @@ function ClientsPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [notes, setNotes] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -72,7 +78,7 @@ function ClientsPage() {
     if (!user) return;
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, contact, notes, created_at, created_by")
+      .select("id, name, contact, notes, logo_path, created_at, created_by")
       .order("name", { ascending: true });
     if (error) {
       toast.error("Error cargando clientes");
@@ -103,28 +109,61 @@ function ClientsPage() {
     [clients, search],
   );
 
+  const resetForm = () => {
+    setName(""); setContact(""); setNotes("");
+    setLogoFile(null);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(null);
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecciona una imagen");
+      return;
+    }
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoFile(f);
+    setLogoPreview(URL.createObjectURL(f));
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setCreating(true);
-    const { error } = await supabase.from("clients").insert({
-      name,
-      contact: contact || null,
-      notes: notes || null,
-      created_by: user.id,
-    });
-    setCreating(false);
-    if (error) {
+    const { data: created, error } = await supabase
+      .from("clients")
+      .insert({
+        name,
+        contact: contact || null,
+        notes: notes || null,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (error || !created) {
+      setCreating(false);
       toast.error("Error al crear cliente");
       return;
     }
+    if (logoFile) {
+      try {
+        const compressed = await compressLogo(logoFile);
+        const path = await uploadClientLogo(created.id, compressed);
+        await supabase.from("clients").update({ logo_path: path }).eq("id", created.id);
+      } catch {
+        toast.error("Cliente creado, pero falló el logo");
+      }
+    }
+    setCreating(false);
     toast.success("Cliente creado");
-    setName(""); setContact(""); setNotes("");
+    resetForm();
     setOpen(false);
     load();
   };
 
-  const handleDelete = async (clientId: string, projectCount: number) => {
+  const handleDelete = async (clientId: string, projectCount: number, logoPath: string | null) => {
     if (projectCount > 0) {
       const { error: upErr } = await supabase
         .from("projects")
@@ -134,6 +173,9 @@ function ClientsPage() {
         toast.error("No se pudieron desvincular los proyectos");
         return;
       }
+    }
+    if (logoPath) {
+      await deleteClientLogo(logoPath).catch(() => {});
     }
     const { error } = await supabase.from("clients").delete().eq("id", clientId);
     if (error) {
@@ -175,6 +217,36 @@ function ClientsPage() {
                   <DialogTitle>Nuevo cliente</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0 border">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Building2 className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoChange}
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                        <ImagePlus className="h-4 w-4 mr-1" /> {logoFile ? "Cambiar" : "Logo"}
+                      </Button>
+                      {logoFile && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => {
+                          setLogoFile(null);
+                          if (logoPreview) URL.revokeObjectURL(logoPreview);
+                          setLogoPreview(null);
+                        }}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="c-name">Nombre *</Label>
                     <Input
@@ -205,7 +277,7 @@ function ClientsPage() {
                     />
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                    <Button type="button" variant="ghost" onClick={() => { resetForm(); setOpen(false); }}>
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={creating}>
@@ -253,8 +325,12 @@ function ClientsPage() {
                     aria-label={`Abrir ${c.name}`}
                   />
                   <div className="flex items-start gap-3 relative z-10 pointer-events-none">
-                    <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Building2 className="h-5 w-5" />
+                    <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 overflow-hidden">
+                      {c.logo_path ? (
+                        <img src={getClientLogoUrl(c.logo_path) ?? ""} alt={c.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <Building2 className="h-5 w-5" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
@@ -297,7 +373,7 @@ function ClientsPage() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDelete(c.id, c.project_count)}
+                            onClick={() => handleDelete(c.id, c.project_count, c.logo_path)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Eliminar
