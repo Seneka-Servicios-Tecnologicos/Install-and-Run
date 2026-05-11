@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2, Pencil, ImagePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +32,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatDateGroup, formatRelative, formatTime } from "@/lib/format";
-import { getSignedUrl } from "@/lib/storage";
+import { getSignedUrl, uploadClientLogo, deleteClientLogo, getClientLogoUrl } from "@/lib/storage";
+import { compressLogo } from "@/lib/compress";
 import { format, startOfDay } from "date-fns";
 
 export const Route = createFileRoute("/cliente/$id")({
