@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, Building2, Trash2 } from "lucide-react";
+import { Plus, Search, Building2, Trash2, ImagePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsGuest } from "@/hooks/use-is-guest";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/format";
+import { compressLogo } from "@/lib/compress";
+import { uploadClientLogo, deleteClientLogo, getClientLogoUrl } from "@/lib/storage";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
