@@ -48,6 +48,7 @@ interface Client {
   name: string;
   contact: string | null;
   notes: string | null;
+  logo_path: string | null;
   created_by: string;
 }
 interface ProjectWithEntries {
@@ -79,6 +80,18 @@ function ClientView() {
   const [projects, setProjects] = useState<ProjectWithEntries[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [view, setView] = useState<"galeria">("galeria");
+  const [logoVersion, setLogoVersion] = useState(0);
+
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [eName, setEName] = useState("");
+  const [eContact, setEContact] = useState("");
+  const [eNotes, setENotes] = useState("");
+  const [eLogoFile, setELogoFile] = useState<File | null>(null);
+  const [eLogoPreview, setELogoPreview] = useState<string | null>(null);
+  const [eRemoveLogo, setERemoveLogo] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -89,7 +102,7 @@ function ClientView() {
     (async () => {
       const { data: c } = await supabase
         .from("clients")
-        .select("id, name, contact, notes, created_by")
+        .select("id, name, contact, notes, logo_path, created_by")
         .eq("id", id)
         .maybeSingle();
       if (!c) {
