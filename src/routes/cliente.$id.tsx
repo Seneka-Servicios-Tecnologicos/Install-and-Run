@@ -173,6 +173,9 @@ function ClientView() {
         return;
       }
     }
+    if (client.logo_path) {
+      await deleteClientLogo(client.logo_path).catch(() => {});
+    }
     const { error } = await supabase.from("clients").delete().eq("id", client.id);
     if (error) {
       toast.error("Error al eliminar cliente");
@@ -180,6 +183,73 @@ function ClientView() {
     }
     toast.success("Cliente eliminado");
     navigate({ to: "/clientes" });
+  };
+
+  const openEdit = () => {
+    if (!client) return;
+    setEName(client.name);
+    setEContact(client.contact ?? "");
+    setENotes(client.notes ?? "");
+    setELogoFile(null);
+    if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+    setELogoPreview(null);
+    setERemoveLogo(false);
+    setEditOpen(true);
+  };
+
+  const handleELogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecciona una imagen");
+      return;
+    }
+    if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
+    setELogoFile(f);
+    setELogoPreview(URL.createObjectURL(f));
+    setERemoveLogo(false);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    setSaving(true);
+    let logoPath: string | null | undefined = undefined; // undefined = no change
+    try {
+      if (eLogoFile) {
+        const compressed = await compressLogo(eLogoFile);
+        logoPath = await uploadClientLogo(client.id, compressed);
+      } else if (eRemoveLogo && client.logo_path) {
+        await deleteClientLogo(client.logo_path).catch(() => {});
+        logoPath = null;
+      }
+    } catch {
+      setSaving(false);
+      toast.error("Error subiendo el logo");
+      return;
+    }
+    const updates: Record<string, string | null> = {
+      name: eName,
+      contact: eContact || null,
+      notes: eNotes || null,
+    };
+    if (logoPath !== undefined) updates.logo_path = logoPath;
+    const { error } = await supabase.from("clients").update(updates).eq("id", client.id);
+    setSaving(false);
+    if (error) {
+      toast.error("Error al guardar cambios");
+      return;
+    }
+    toast.success("Cliente actualizado");
+    setClient({
+      ...client,
+      name: eName,
+      contact: eContact || null,
+      notes: eNotes || null,
+      logo_path: logoPath !== undefined ? logoPath : client.logo_path,
+    });
+    setLogoVersion((v) => v + 1);
+    setEditOpen(false);
   };
 
   if (loading || !user || !client) {
