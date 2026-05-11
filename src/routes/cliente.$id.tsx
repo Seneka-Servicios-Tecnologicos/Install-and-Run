@@ -228,7 +228,7 @@ function ClientView() {
       toast.error("Error subiendo el logo");
       return;
     }
-    const updates: Record<string, string | null> = {
+    const updates: { name: string; contact: string | null; notes: string | null; logo_path?: string | null } = {
       name: eName,
       contact: eContact || null,
       notes: eNotes || null,
