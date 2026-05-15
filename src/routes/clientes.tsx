@@ -260,14 +260,31 @@ function ClientsPage() {
                       placeholder="Empresa S.A."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="c-contact">Contacto</Label>
-                    <Input
-                      id="c-contact"
-                      value={contact}
-                      onChange={(e) => setContact(e.target.value)}
-                      placeholder="Juan Pérez · juan@empresa.com · +52..."
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="c-email">Correo</Label>
+                      <Input
+                        id="c-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="contacto@empresa.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-phone">Teléfono</Label>
+                      <Input
+                        id="c-phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+52 55 1234 5678"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="c-notes">Notas</Label>
