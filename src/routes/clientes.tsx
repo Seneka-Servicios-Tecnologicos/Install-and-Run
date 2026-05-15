@@ -47,7 +47,8 @@ export const Route = createFileRoute("/clientes")({
 interface ClientRow {
   id: string;
   name: string;
-  contact: string | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   logo_path: string | null;
   created_at: string;
