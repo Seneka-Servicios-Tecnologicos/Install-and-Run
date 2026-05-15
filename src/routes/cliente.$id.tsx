@@ -292,11 +292,30 @@ function ClientView() {
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
-              {client.contact && (
-                <p className="text-sm text-muted-foreground mt-1">{client.contact}</p>
+              {(client.email || client.phone) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                  {client.email && (
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="truncate">{client.email}</span>
+                    </a>
+                  )}
+                  {client.phone && (
+                    <a
+                      href={`tel:${client.phone.replace(/[^+\d]/g, "")}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{client.phone}</span>
+                    </a>
+                  )}
+                </div>
               )}
               {client.notes && (
-                <p className="text-sm text-muted-foreground mt-2 max-w-2xl">{client.notes}</p>
+                <p className="text-sm text-muted-foreground mt-2 max-w-2xl whitespace-pre-wrap">{client.notes}</p>
               )}
             </div>
           </div>
