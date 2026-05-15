@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, Building2, Trash2, ImagePlus, X } from "lucide-react";
+import { Plus, Search, Building2, Trash2, ImagePlus, X, Mail, Phone } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
