@@ -231,9 +231,12 @@ function ClientView() {
       toast.error("Error subiendo el logo");
       return;
     }
-    const updates: { name: string; contact: string | null; notes: string | null; logo_path?: string | null } = {
+    const emailVal = eEmail.trim() || null;
+    const phoneVal = ePhone.trim() || null;
+    const updates: { name: string; email: string | null; phone: string | null; notes: string | null; logo_path?: string | null } = {
       name: eName,
-      contact: eContact || null,
+      email: emailVal,
+      phone: phoneVal,
       notes: eNotes || null,
     };
     if (logoPath !== undefined) updates.logo_path = logoPath;
@@ -247,7 +250,8 @@ function ClientView() {
     setClient({
       ...client,
       name: eName,
-      contact: eContact || null,
+      email: emailVal,
+      phone: phoneVal,
       notes: eNotes || null,
       logo_path: logoPath !== undefined ? logoPath : client.logo_path,
     });
