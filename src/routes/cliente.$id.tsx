@@ -86,7 +86,8 @@ function ClientView() {
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [eName, setEName] = useState("");
-  const [eContact, setEContact] = useState("");
+  const [eEmail, setEEmail] = useState("");
+  const [ePhone, setEPhone] = useState("");
   const [eNotes, setENotes] = useState("");
   const [eLogoFile, setELogoFile] = useState<File | null>(null);
   const [eLogoPreview, setELogoPreview] = useState<string | null>(null);
