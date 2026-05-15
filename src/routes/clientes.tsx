@@ -138,7 +138,8 @@ function ClientsPage() {
       .from("clients")
       .insert({
         name,
-        contact: contact || null,
+        email: email.trim() || null,
+        phone: phone.trim() || null,
         notes: notes || null,
         created_by: user.id,
       })
